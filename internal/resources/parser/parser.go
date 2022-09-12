@@ -21,8 +21,6 @@ const (
 	StructType
 )
 
-//go:generate ifaces head parser_ifaces.go -c "DO NOT EDIT. DO NOT USE. generated for ifaces testing"
-
 // Parse parse source were path is path to source and src is an array of bytes,
 // string of the sources or nil
 func Parse(path string, src any) (*Parser, error) {
@@ -72,14 +70,14 @@ func readSource(filename string, src any) (*[]byte, error) {
 		case io.Reader:
 			b, err := io.ReadAll(s)
 			return &b, err
+		case func() (*[]byte, error):
+			return s()
 		}
 		return nil, errors.New("invalid source")
 	}
 	b, err := os.ReadFile(filename)
 	return &b, err
 }
-
-//go:generate ifaces entry parser_ifaces.go --post Iface
 
 // Parset parse method
 type Parser struct {
@@ -237,8 +235,6 @@ type GeneratorCmt struct {
 	Line int    // Start Start line
 }
 
-//go:generate ifaces entry parser_ifaces.go --post Iface
-
 // Import
 type Import struct {
 	fset       *token.FileSet
@@ -258,8 +254,6 @@ func (i Import) Path() string {
 	}
 	return ``
 }
-
-//go:generate ifaces entry parser_ifaces.go --post Iface
 
 // Type type declaration
 type Type struct {
@@ -291,8 +285,6 @@ func (r Type) Type() int {
 	}
 	return 0
 }
-
-//go:generate ifaces entry parser_ifaces.go --post Iface
 
 // Recv function receiver
 type Recv struct {

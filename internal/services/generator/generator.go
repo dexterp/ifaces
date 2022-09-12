@@ -8,36 +8,39 @@ import (
 
 	"github.com/dexterp/ifaces/internal/resources/addimports"
 	"github.com/dexterp/ifaces/internal/resources/parser"
+	"github.com/dexterp/ifaces/internal/resources/print"
 	"github.com/dexterp/ifaces/internal/resources/tdata"
 	"golang.org/x/tools/imports"
 )
+
+//go:generate ifaces generator_iface.go --post Iface
 
 // Generator interface generator
 type Generator struct {
 	comment string
 	iface   string
 	noFDoc  bool
-	noHdr   bool
 	noTDoc  bool
 	pkg     string
 	post    string
 	pre     string
+	print   print.PrintIface
 	struc   bool
 	wild    string
 }
 
 // Options
 type Options struct {
-	Comment string // Comment comment at the top of the file
-	Iface   string // Iface explicitly set interface name
-	NoFDoc  bool   // NoFDoc omit copying function documentation
-	NoHdr   bool   // NoHdr omit writing header
-	NoTDoc  bool   // NoTDoc omit copying type documentation
-	Pkg     string // Pkg package name
-	Post    string // Post postfix to interface name
-	Pre     string // Pre prefix to interface name
-	Struct  bool   // Struct generate an interface for all structs
-	Wild    string // Wild wildcard match
+	Comment string           // Comment comment at the top of the file
+	Iface   string           // Iface explicitly set interface name
+	NoFDoc  bool             // NoFDoc omit copying function documentation
+	NoTDoc  bool             // NoTDoc omit copying type documentation
+	Pkg     string           // Pkg package name
+	Post    string           // Post postfix to interface name
+	Pre     string           // Pre prefix to interface name
+	Print   print.PrintIface // Print handler
+	Struct  bool             // Struct generate an interface for all structs
+	Match   string           // Wild wildcard match
 }
 
 // New generate IfaceGen
@@ -46,91 +49,31 @@ func New(opts Options) *Generator {
 		comment: opts.Comment,
 		iface:   opts.Iface,
 		noFDoc:  opts.NoFDoc,
-		noHdr:   opts.NoHdr,
 		noTDoc:  opts.NoTDoc,
 		pkg:     opts.Pkg,
 		post:    opts.Post,
 		pre:     opts.Pre,
+		print:   opts.Print,
 		struc:   opts.Struct,
-		wild:    opts.Wild,
+		wild:    opts.Match,
 	}
 }
 
-//go:embed head.gotmpl
-var headtmpl string
+//go:embed generate.gotmpl
+var gentmpl string
 
 //go:embed entity.gotmpl
-var entitytmpl string
+var entrytmpl string
 
-// Gen generate interfaces source code for the gen sub command.
-
-// Head generate interfaces source code for the head sub command and write to
-// output. Generate used with a go generator
-func (g Generator) Head(inputfile string, inputsrc any, outfile string, current io.ReadWriter, output io.Writer) error {
-	p, err := parser.Parse(inputfile, inputsrc)
+// Generate generate interfaces source code for the gen sub command.
+func (g Generator) Generate(srcs []*Src, current *bytes.Buffer, outfile string, output io.Writer) error {
+	data, importsList, err := g.genData(srcs)
 	if err != nil {
 		return err
 	}
-	var t *template.Template
-	if g.noHdr {
-		t, err = template.New("entity.gotmpl").Parse(entitytmpl)
-	} else {
-		t, err = template.New("head.gotmpl").Parse(headtmpl)
-	}
+	err = g.applyTemplate(current, data)
 	if err != nil {
 		return err
-	}
-	pkg := g.pkg
-	if pkg == `` {
-		pkg = p.Package()
-	}
-	data := &tdata.TData{
-		Comment: g.comment,
-		NoFDoc:  g.noFDoc,
-		NoTDoc:  g.noTDoc,
-		Pkg:     pkg,
-		Post:    g.post,
-		Pre:     g.pre,
-		Ifaces:  []*tdata.Interface{},
-	}
-	var types []*parser.Type
-	if g.struc {
-		types = append(types, p.TypeByType(parser.StructType)...)
-	}
-	if g.wild != `` {
-		types = append(types, p.TypeByPattern(g.wild)...)
-	}
-	unique := map[string]any{}
-	for _, typ := range types {
-		iface := &tdata.Interface{
-			Type: &tdata.Type{
-				NoTDoc: g.noTDoc,
-				Iface:  g.iface,
-				Pre:    g.pre,
-				Post:   g.post,
-				Decl:   typ},
-		}
-		recvs := p.GetRecvs(typ.Name())
-		for _, recv := range recvs {
-			r := &tdata.Recv{
-				NoFDoc: g.noFDoc,
-				Recv:   recv,
-			}
-			iface.Recvs = append(iface.Recvs, r)
-		}
-		_, ok := unique[typ.Name()]
-		if len(iface.Recvs) > 0 && !ok {
-			data.Ifaces = append(data.Ifaces, iface)
-			unique[typ.Name()] = struct{}{}
-		}
-	}
-	err = t.Execute(current, data)
-	if err != nil {
-		return err
-	}
-	importsList := []addimports.Import{}
-	for _, i := range p.Imports() {
-		importsList = append(importsList, i)
 	}
 	importsOut := &bytes.Buffer{}
 	err = addimports.AddImports(outfile, current, importsList, importsOut)
@@ -150,70 +93,88 @@ func (g Generator) Head(inputfile string, inputsrc any, outfile string, current 
 	return err
 }
 
-// Entry generate interfaces source code for the item sub command and write to
-// output
-func (g Generator) Entry(inputfile string, inputsrc any, line int, outfile string, current io.ReadWriter, output io.Writer) error {
-	p, err := parser.Parse(inputfile, inputsrc)
-	if err != nil {
-		return err
-	}
-	t, err := template.New("entity.gotmpl").Parse(entitytmpl)
-	if err != nil {
-		return err
-	}
+func (g Generator) genData(srcs []*Src) (*tdata.TData, []addimports.Import, error) {
 	data := &tdata.TData{
 		Comment: g.comment,
 		NoFDoc:  g.noFDoc,
 		NoTDoc:  g.noTDoc,
+		Pkg:     g.pkg,
 		Post:    g.post,
 		Pre:     g.pre,
 		Ifaces:  []*tdata.Interface{},
 	}
-	decl := p.GetType(line)
-	if decl == nil {
-		return nil
-	}
-	recvs := p.GetRecvs(decl.Name())
-	if len(recvs) == 0 {
-		return nil
-	}
-	iface := &tdata.Interface{
-		Type: &tdata.Type{
-			NoTDoc: g.noTDoc,
-			Pre:    g.pre,
-			Post:   g.post,
-			Decl:   decl},
-	}
-	for _, recv := range recvs {
-		r := &tdata.Recv{
-			NoFDoc: g.noFDoc,
-			Recv:   recv,
+	importsList := []addimports.Import{}
+	uniqueType := map[string]any{}
+	for i := range srcs {
+		types := []*parser.Type{}
+		pth := srcs[i].File
+		line := srcs[i].Line
+		src := srcs[i].Src
+		p, err := parser.Parse(pth, src)
+		if err != nil {
+			g.print.Warnf(`skipping "%s" due to error: %s`, pth, err)
+			continue
 		}
-		iface.Recvs = append(iface.Recvs, r)
+		if g.struc {
+			types = append(types, p.TypeByType(parser.StructType)...)
+		}
+		if g.wild != `` {
+			types = append(types, p.TypeByPattern(g.wild)...)
+		}
+		// TODO -Follow bug "types == nil" fails if "len(types) == 0"
+		if len(types) == 0 && line > 0 {
+			typ := p.GetType(line)
+			if typ != nil {
+				types = append(types, typ)
+			}
+		}
+		for _, i := range p.Imports() {
+			importsList = append(importsList, i)
+		}
+		for _, typ := range types {
+			iface := &tdata.Interface{
+				Type: &tdata.Type{
+					NoTDoc: g.noTDoc,
+					Iface:  g.iface,
+					Pre:    g.pre,
+					Post:   g.post,
+					Decl:   typ},
+			}
+			recvs := p.GetRecvs(typ.Name())
+			for _, recv := range recvs {
+				r := &tdata.Recv{
+					NoFDoc: g.noFDoc,
+					Recv:   recv,
+				}
+				iface.Recvs = append(iface.Recvs, r)
+			}
+			_, ok := uniqueType[typ.Name()]
+			if len(iface.Recvs) > 0 && !ok {
+				data.Ifaces = append(data.Ifaces, iface)
+				uniqueType[typ.Name()] = struct{}{}
+			}
+		}
 	}
-	data.Ifaces = append(data.Ifaces, iface)
+	return data, importsList, nil
+}
+
+func (g Generator) applyTemplate(current *bytes.Buffer, data *tdata.TData) error {
+	t, err := template.New("entity.gotmpl").Parse(entrytmpl)
+	if current.Bytes() == nil {
+		t, err = template.New("head.gotmpl").Parse(gentmpl)
+	}
+	if err != nil {
+		return err
+	}
 	err = t.Execute(current, data)
 	if err != nil {
 		return err
 	}
-	importsList := []addimports.Import{}
-	for _, i := range p.Imports() {
-		importsList = append(importsList, i)
-	}
-	importsOut := &bytes.Buffer{}
-	err = addimports.AddImports(outfile, current, importsList, importsOut)
-	if err != nil {
-		return err
-	}
-	finalSrc, err := imports.Process(outfile, importsOut.Bytes(), &imports.Options{
-		TabIndent: true,
-		TabWidth:  2,
-		Fragment:  true,
-		Comments:  true,
-	})
-	if err != nil {
-		return err
-	}
-	_, err = output.Write(finalSrc)
-	return err
+	return nil
+}
+
+type Src struct {
+	File string
+	Line int
+	Src  any
 }

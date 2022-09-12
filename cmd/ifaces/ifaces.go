@@ -2,54 +2,65 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
-	"strconv"
 
 	"github.com/dexterp/ifaces/internal/di"
 	"github.com/dexterp/ifaces/internal/resources/cli"
+	"github.com/dexterp/ifaces/internal/resources/envs"
+	"github.com/dexterp/ifaces/internal/resources/print"
 	"github.com/dexterp/ifaces/internal/resources/version"
+	"github.com/dexterp/ifaces/internal/services/generator"
 )
 
 func main() {
 	args := getArgs()
-	if args.Gen {
-
+	di.Args = args
+	di.Stderr = os.Stderr
+	di.Stdout = os.Stdout
+	r := &run{
+		args:  args,
+		gen:   di.MakeIfaceGen(),
+		print: di.MakePrint(),
 	}
+	r.checkSrcs()
+	r.runGen()
+}
 
-	file, line := getFileLine(args)
-	current := currentSrc(args)
-	src, err := os.ReadFile(file)
+type run struct {
+	args  *cli.Args
+	gen   *generator.Generator
+	print print.PrintIface
+}
+
+func (r run) checkSrcs() {
+	if len(r.args.Srcs) == 0 && (envs.Gofile() == `` || envs.Goline() < 1) {
+		r.print.Errorln(`no source file provided. needs -f <file> option or to run as part of a go generator. exiting`)
+		os.Exit(-1)
+	}
+}
+
+func (r run) runGen() {
+	srcsList := r.srcList()
+	curGenSrc := r.curGenSrc()
+	bufOutput := &bytes.Buffer{}
+	err := r.gen.Generate(srcsList, curGenSrc, r.args.Out, bufOutput)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error reading %s: %s\n", file, err.Error())
+		r.print.Errorln(err.Error())
 		os.Exit(-1)
 	}
 	var outfile io.Writer
 	var closer func()
-	if args.Print {
-		outfile, closer = outWriter(args.Out, os.Stdout)
+	if r.args.Print {
+		outfile, closer = r.outWriter(r.args.Out, os.Stdout)
 	} else {
-		outfile, closer = outWriter(args.Out, nil)
+		outfile, closer = r.outWriter(r.args.Out, nil)
 	}
 	defer closer()
-	di.Args = args
-	gen := di.MakeIfaceGen()
-	switch {
-	case args.Head:
-		err = gen.Head(file, src, args.Out, current, outfile)
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(-1)
-		}
-	case args.Entry:
-		err = gen.Entry(file, src, line, args.Out, current, outfile)
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(-1)
-		}
-	default:
-		fmt.Fprintln(os.Stderr, `unrecognized sub command see "ifaces -h" for command line options`)
+	_, err = io.Copy(outfile, bufOutput)
+	if err != nil {
+		r.print.Errorf(`can not write to output: %s`, err.Error())
+		os.Exit(-1)
 	}
 }
 
@@ -63,19 +74,43 @@ func getArgs() *cli.Args {
 	return args
 }
 
-func currentSrc(args *cli.Args) *bytes.Buffer {
-	// current source
-	cur := &bytes.Buffer{}
-	if args.Entry || args.Append {
-		curFile, err := os.Open(args.Out)
-		if err != nil && !os.IsNotExist(err) {
-			fmt.Fprintf(os.Stderr, "error opening file %s: %s\n", args.Out, err.Error())
-			os.Exit(-1)
+func (r run) srcList() (srcs []*generator.Src) {
+	for _, file := range r.args.Srcs {
+		f, err := os.Open(file)
+		if err != nil {
+			r.print.Warnf(`skipping file %s: %s\n`, file, err.Error())
+			continue
 		}
-		if curFile != nil {
+		srcs = append(srcs, &generator.Src{
+			File: file,
+			Src:  f,
+		})
+	}
+	if envs.Gofile() != `` || envs.Goline() > 0 {
+		srcs = append(srcs, &generator.Src{
+			File: envs.Gofile(),
+			Line: envs.Goline(),
+		})
+	}
+	if srcs == nil {
+		r.print.Errorln(`unable to open any source files. exiting`)
+		os.Exit(-1)
+	}
+	return srcs
+}
+
+// curGenSrc return the contents of any previously generated source file
+func (r run) curGenSrc() *bytes.Buffer {
+	cur := &bytes.Buffer{}
+	if r.args.Out != `` && r.args.Append {
+		curFile, err := os.Open(r.args.Out)
+		if err != nil && !os.IsNotExist(err) {
+			r.print.Errorf("error opening file %s: %s\n", r.args.Out, err.Error())
+			os.Exit(-1)
+		} else {
 			_, err := io.Copy(cur, curFile)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error reading %s: %s\n", args.Out, err.Error())
+				r.print.Errorf("error reading %s: %s\n", r.args.Out, err.Error())
 				os.Exit(-1)
 			}
 		}
@@ -83,30 +118,10 @@ func currentSrc(args *cli.Args) *bytes.Buffer {
 	return cur
 }
 
-func getFileLine(args *cli.Args) (string, int) {
-	file := os.Getenv("GOFILE")
-	errMsg := `ifaces (head|entity) sub commands should be run as go generators. exiting`
-	if file == `` && (args.Head || args.Entry) {
-		fmt.Fprintln(os.Stderr, errMsg)
-		os.Exit(-1)
-	}
-	lStr := os.Getenv("GOLINE")
-	if lStr == `` && (args.Head || args.Entry) {
-		fmt.Fprintln(os.Stderr, errMsg)
-		os.Exit(-1)
-	}
-	line, err := strconv.Atoi(lStr)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, errMsg)
-		os.Exit(-1)
-	}
-	return file, line
-}
-
-func outWriter(file string, output io.Writer) (io.Writer, func()) {
+func (r run) outWriter(file string, output io.Writer) (io.Writer, func()) {
 	f, err := os.OpenFile(file, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0777)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, `can not open file %s: %s`, file, err.Error())
+		r.print.Errorf(`can not open file %s: %s`, file, err.Error())
 		os.Exit(-1)
 	}
 	if output != nil {

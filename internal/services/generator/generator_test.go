@@ -9,14 +9,14 @@ import (
 )
 
 var (
-	src = `package somepkg
+	src1 = `package somepkg
 
 import (
 	"io"
 	"os"
 )
 
-//` + `go:generate ifaces head /tmp/test_ifaces.go
+//
 
 // MyStruct type document
 type MyStruct struct {
@@ -31,7 +31,7 @@ func (m MyStruct) Get() string {
 func (m *MyStruct) Set(item string) {
 }
 
-//` + `go:generate ifaces entry /tmp/test_ifaces.go
+//` + `go:generate ifaces /tmp/test_ifaces.go -a
 
 // SomeStruct type document
 type SomeStruct struct {
@@ -62,20 +62,25 @@ func (m *IgnoreStruct) Connect(connetstr string) {
 	wild    = `My*`
 )
 
-func TestGenerator_Head(t *testing.T) {
+func TestGenerator_Generate(t *testing.T) {
 	gen := New(Options{
 		Pre:     pre,
 		Post:    post,
 		Comment: comment,
 		Pkg:     pkg,
-		Wild:    wild,
+		Match:   wild,
 	})
-	cur := &bytes.Buffer{}
-	buf := &bytes.Buffer{}
-	err := gen.Head("mysrc.go", src, "test_ifaces.go", cur, buf)
-	if err != nil {
-		t.Error(err)
+	outfile := "src1.go"
+	srcs := []*Src{
+		{
+			File: outfile,
+			Src:  src1,
+		},
 	}
+	in := &bytes.Buffer{}
+	out := &bytes.Buffer{}
+	err := gen.Generate(srcs, in, outfile, out)
+	assert.NoError(t, err)
 	expected := fmt.Sprintf(`// DO NOT EDIT
 
 package %s
@@ -88,24 +93,29 @@ type PreMyStructPost interface {
 	Set(item string)
 }
 `, pkg)
-	assert.Equal(t, expected, buf.String())
+	assert.Equal(t, expected, out.String())
 }
 
-func TestGenerator_Head_Struct(t *testing.T) {
+func TestGenerator_Gen_Struct(t *testing.T) {
 	gen := New(Options{
 		Comment: comment,
 		Pkg:     pkg,
 		Post:    post,
 		Pre:     pre,
 		Struct:  true,
-		Wild:    wild,
+		Match:   wild,
 	})
-	cur := &bytes.Buffer{}
-	out := &bytes.Buffer{}
-	err := gen.Head("mysrc.go", src, "test_ifaces.go", cur, out)
-	if err != nil {
-		t.Error(err)
+	outfile := `test_ifaces.go`
+	srcs := []*Src{
+		{
+			File: outfile,
+			Src:  src1,
+		},
 	}
+	in := &bytes.Buffer{}
+	out := &bytes.Buffer{}
+	err := gen.Generate(srcs, in, "test_ifaces.go", out)
+	assert.NoError(t, err)
 	expected := fmt.Sprintf(`// DO NOT EDIT
 
 package %s
@@ -139,32 +149,30 @@ type PreIgnoreStructPost interface {
 	assert.Equal(t, expected, out.String())
 }
 
-func TestGenerator_Head_NoHdr(t *testing.T) {
+func TestGenerator_Gen_NoTypeDoc(t *testing.T) {
 	gen := New(Options{
-		NoHdr:   true,
+		NoTDoc:  true,
 		Pre:     pre,
 		Post:    post,
 		Comment: comment,
 		Pkg:     pkg,
-		Wild:    wild,
+		Match:   wild,
 	})
-	cur := &bytes.Buffer{}
-	cur.WriteString(fmt.Sprintf(`// DO NOT EDIT
-
-package %s
-
-`, pkg))
-
-	out := &bytes.Buffer{}
-	err := gen.Head("mysrc.go", src, "test_ifaces.go", cur, out)
-	if err != nil {
-		t.Error(err)
+	outfile := `test_ifaces.go`
+	srcs := []*Src{
+		{
+			File: outfile,
+			Src:  src1,
+		},
 	}
+	in := &bytes.Buffer{}
+	out := &bytes.Buffer{}
+	err := gen.Generate(srcs, in, "test_ifaces.go", out)
+	assert.NoError(t, err)
 	expected := fmt.Sprintf(`// DO NOT EDIT
 
 package %s
 
-// PreMyStructPost type document
 type PreMyStructPost interface {
 	// Get func doc
 	Get() string
@@ -175,50 +183,26 @@ type PreMyStructPost interface {
 	assert.Equal(t, expected, out.String())
 }
 
-func TestGenerator_Head_NoTypeDoc(t *testing.T) {
-	gen := New(Options{
-		NoTDoc:  true,
-		Pre:     pre,
-		Post:    post,
-		Comment: comment,
-		Pkg:     pkg,
-		Wild:    wild,
-	})
-	cur := &bytes.Buffer{}
-	buf := &bytes.Buffer{}
-	err := gen.Head("mysrc.go", src, "test_ifaces.go", cur, buf)
-	if err != nil {
-		t.Error(err)
-	}
-	expected := fmt.Sprintf(`// DO NOT EDIT
-
-package %s
-
-type PreMyStructPost interface {
-	// Get func doc
-	Get() string
-	// Set func doc
-	Set(item string)
-}
-`, pkg)
-	assert.Equal(t, expected, buf.String())
-}
-
-func TestGenerator_Head_NoFuncDoc(t *testing.T) {
+func TestGenerator_Gen_NoFuncDoc(t *testing.T) {
 	gen := New(Options{
 		NoFDoc:  true,
 		Pre:     pre,
 		Post:    post,
 		Comment: comment,
 		Pkg:     pkg,
-		Wild:    wild,
+		Match:   wild,
 	})
-	cur := &bytes.Buffer{}
-	output := &bytes.Buffer{}
-	err := gen.Head("mysrc.go", src, "test_ifaces.go", cur, output)
-	if err != nil {
-		t.Error(err)
+	outfile := `test_ifaces.go`
+	srcs := []*Src{
+		{
+			File: outfile,
+			Src:  src1,
+		},
 	}
+	in := &bytes.Buffer{}
+	out := &bytes.Buffer{}
+	err := gen.Generate(srcs, in, "test_ifaces.go", out)
+	assert.NoError(t, err)
 	expected := fmt.Sprintf(`// DO NOT EDIT
 
 package %s
@@ -229,16 +213,15 @@ type PreMyStructPost interface {
 	Set(item string)
 }
 `, pkg)
-	assert.Equal(t, expected, output.String())
+	assert.Equal(t, expected, out.String())
 }
 
-func TestGenerator_Item(t *testing.T) {
+func TestGenerator_Gen_Entry(t *testing.T) {
 	gen := New(Options{
 		Pre:     pre,
 		Post:    post,
 		Comment: comment,
 		Pkg:     pkg,
-		Wild:    wild,
 	})
 
 	curSrc := fmt.Sprintf(`// DO NOT EDIT
@@ -277,26 +260,29 @@ type PreSomeStructPost interface {
 	Delete() error
 }
 `, pkg)
-
-	curTarget := &bytes.Buffer{}
-	newTarget := &bytes.Buffer{}
-
-	curTarget.WriteString(curSrc)
-	err := gen.Entry("mysrc.go", src, 23, "test_ifaces.go", curTarget, newTarget)
-	if err != nil {
-		t.Error(err)
+	outfile := `test_ifaces.go`
+	srcs := []*Src{
+		{
+			File: outfile,
+			Src:  src1,
+			Line: 23,
+		},
 	}
-	assert.Equal(t, expected, newTarget.String())
+	in := &bytes.Buffer{}
+	in.WriteString(curSrc)
+	out := &bytes.Buffer{}
+	err := gen.Generate(srcs, in, "test_ifaces.go", out)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, out.String())
 }
 
-func TestGenerator_Item_NoTypeDoc(t *testing.T) {
+func TestGenerator_Gen_Entry_NoTypeDoc(t *testing.T) {
 	gen := New(Options{
 		NoTDoc:  true,
 		Pre:     pre,
 		Post:    post,
 		Comment: comment,
 		Pkg:     pkg,
-		Wild:    wild,
 	})
 
 	curSrc := fmt.Sprintf(`// DO NOT EDIT
@@ -312,16 +298,6 @@ type Iface interface {
 	SetStderr(stderr *os.Stderr)
 }
 `, pkg)
-
-	cur := &bytes.Buffer{}
-	buf := &bytes.Buffer{}
-
-	cur.WriteString(curSrc)
-
-	err := gen.Entry("mysrc.go", src, 23, "test_ifaces.go", cur, buf)
-	if err != nil {
-		t.Error(err)
-	}
 	expected := fmt.Sprintf(`// DO NOT EDIT
 
 package %s
@@ -343,17 +319,29 @@ type PreSomeStructPost interface {
 	Delete() error
 }
 `, pkg)
-	assert.Equal(t, expected, buf.String())
+	outfile := `test_ifaces.go`
+	srcs := []*Src{
+		{
+			File: outfile,
+			Src:  src1,
+			Line: 23,
+		},
+	}
+	in := &bytes.Buffer{}
+	in.WriteString(curSrc)
+	out := &bytes.Buffer{}
+	err := gen.Generate(srcs, in, "test_ifaces.go", out)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, out.String())
 }
 
-func TestGenerator_Item_NoFuncDoc(t *testing.T) {
+func TestGenerator_Gen_Entry_NoFuncDoc(t *testing.T) {
 	gen := New(Options{
 		NoFDoc:  true,
 		Pre:     pre,
 		Post:    post,
 		Comment: comment,
 		Pkg:     pkg,
-		Wild:    wild,
 	})
 
 	curSrc := fmt.Sprintf(`// DO NOT EDIT
@@ -390,14 +378,18 @@ type PreSomeStructPost interface {
 	Delete() error
 }
 `, pkg)
-
-	cur := &bytes.Buffer{}
-	buf := &bytes.Buffer{}
-
-	cur.WriteString(curSrc)
-	err := gen.Entry("mysrc.go", src, 23, "test_ifaces.go", cur, buf)
-	if err != nil {
-		t.Error(err)
+	srcfile := `test_ifaces.go`
+	srcs := []*Src{
+		{
+			File: srcfile,
+			Src:  src1,
+			Line: 23,
+		},
 	}
-	assert.Equal(t, expected, buf.String())
+	in := &bytes.Buffer{}
+	out := &bytes.Buffer{}
+	in.WriteString(curSrc)
+	err := gen.Generate(srcs, in, "test_ifaces.go", out)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, out.String())
 }
