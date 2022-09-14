@@ -14,9 +14,9 @@ import (
 	"io"
 )
 
-//`+`go:generate ifaces head /tmp/pkg/pkg_ifaces.go
+//`+`go:generate ifaces /tmp/pkg/pkg_ifaces.go
 
-//`+`go:generate ifaces entry /tmp/pkg/pkg_ifaces.go --post Parser 
+//`+`go:generate ifaces /tmp/pkg/pkg_ifaces.go --post Parser 
 
 // Parser Parser parses data
 type Parser struct {
@@ -87,4 +87,13 @@ func TestParser_Package(t *testing.T) {
 	p, err := Parse(`src.go`, []byte(src))
 	assert.NoError(t, err)
 	assert.Equal(t, pkg, p.Package())
+}
+
+func TestParser_parseGeneratorCmts(t *testing.T) {
+	p, err := Parse(`src.go`, []byte(src))
+	assert.NoError(t, err)
+	if assert.Equal(t, 2, len(p.genCmts)) {
+		assert.Equal(t, 7, p.genCmts[0].Line)
+		assert.Equal(t, 9, p.genCmts[1].Line)
+	}
 }
