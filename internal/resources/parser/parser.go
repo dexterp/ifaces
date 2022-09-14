@@ -102,7 +102,7 @@ func (p *Parser) parse() error {
 
 // parseGeneratorCmts
 func (p *Parser) parseGeneratorCmts() error {
-	re := regexp.MustCompile(`^//go:generate\s*ifaces\s*entry\W`)
+	re := regexp.MustCompile(`^//go:generate\s*ifaces\W`)
 	buf := *p.src
 	var line int
 	for {
