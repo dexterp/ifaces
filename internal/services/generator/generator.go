@@ -4,6 +4,7 @@ import (
 	"bytes"
 	_ "embed"
 	"io"
+	"path/filepath"
 	"text/template"
 
 	"github.com/dexterp/ifaces/internal/resources/addimports"
@@ -67,7 +68,11 @@ var entrytmpl string
 
 // Generate generate interfaces source code for the gen sub command.
 func (g Generator) Generate(srcs []*Src, current *bytes.Buffer, outfile string, output io.Writer) error {
-	data, importsList, err := g.genData(srcs)
+	pkg, err := g.pckage(outfile)
+	if err != nil {
+		return err
+	}
+	data, importsList, err := g.genData(srcs, pkg)
 	if err != nil {
 		return err
 	}
@@ -93,12 +98,12 @@ func (g Generator) Generate(srcs []*Src, current *bytes.Buffer, outfile string, 
 	return err
 }
 
-func (g Generator) genData(srcs []*Src) (*tdata.TData, []addimports.Import, error) {
+func (g Generator) genData(srcs []*Src, pkg string) (*tdata.TData, []addimports.Import, error) {
 	data := &tdata.TData{
 		Comment: g.comment,
 		NoFDoc:  g.noFDoc,
 		NoTDoc:  g.noTDoc,
-		Pkg:     g.pkg,
+		Pkg:     pkg,
 		Post:    g.post,
 		Pre:     g.pre,
 		Ifaces:  []*tdata.Interface{},
@@ -114,6 +119,9 @@ func (g Generator) genData(srcs []*Src) (*tdata.TData, []addimports.Import, erro
 		if err != nil {
 			g.print.Warnf(`skipping "%s" due to error: %s`, pth, err)
 			continue
+		}
+		if len(srcs) == 1 && data.Pkg == `` {
+			data.Pkg = p.Package()
 		}
 		if g.struc {
 			types = append(types, p.TypeByType(parser.StructType)...)
@@ -171,6 +179,22 @@ func (g Generator) applyTemplate(current *bytes.Buffer, data *tdata.TData) error
 		return err
 	}
 	return nil
+}
+
+func (g Generator) pckage(out string) (string, error) {
+	if g.pkg != `` {
+		return g.pkg, nil
+	}
+	if out == `` {
+		return g.pkg, nil
+	}
+	abs, err := filepath.Abs(out)
+	if err != nil {
+		return ``, err
+	}
+	d := filepath.Dir(abs)
+	newpkg := filepath.Base(d)
+	return newpkg, nil
 }
 
 type Src struct {

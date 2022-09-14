@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/docopt/docopt-go"
 )
@@ -59,28 +58,7 @@ func ParseArgs(argv []string, version string, stdout io.Writer, stderr io.Writer
 	if err != nil {
 		fmt.Fprintf(stderr, `error binding command arguments: %s`, err.Error())
 	}
-	err = dynamicPkg(config)
-	if err != nil {
-		return nil, err
-	}
 	return config, nil
-}
-
-func dynamicPkg(args *Args) error {
-	if args.Pkg != `` {
-		return nil
-	}
-	if args.Out == `` {
-		return nil
-	}
-	abs, err := filepath.Abs(args.Out)
-	if err != nil {
-		return err
-	}
-	d := filepath.Dir(abs)
-	pkg := filepath.Base(d)
-	args.Pkg = pkg
-	return nil
 }
 
 type Args struct {

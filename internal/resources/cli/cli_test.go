@@ -51,20 +51,3 @@ func TestParseArgs_Gen_Optional(t *testing.T) {
 	assert.Zero(t, stdout.String())
 	assert.Zero(t, stderr.String())
 }
-
-func TestParseArgs_Gen_OptionalDynamicPkg(t *testing.T) {
-	generatedsrc := filepath.Join(testpaths.TempDir(), pkg, file)
-	cmd := []string{"ifaces", generatedsrc, "-a", "--pre", pre, "--post", post, "-c", comment, "-m", wild}
-	args, err := ParseArgs(cmd[1:], ``, stdout, stderr)
-	if !assert.NoError(t, err) {
-		t.FailNow()
-	}
-	assert.True(t, args.Append, `args.Append not set`)
-	assert.Equal(t, pre, args.Pre, `args.Pre incorrect`)
-	assert.Equal(t, post, args.Post, `args.Post incorrect`)
-	assert.Equal(t, comment, args.Cmt, `args.Cmt incorrect`)
-	assert.Equal(t, wild, args.Match, `args.Wild incorrect`)
-	assert.Equal(t, pkg, args.Pkg, `args.Pkg incorrect`)
-	assert.Zero(t, stdout.String())
-	assert.Zero(t, stderr.String())
-}
