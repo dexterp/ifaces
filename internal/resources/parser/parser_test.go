@@ -53,7 +53,9 @@ func TestParser_GetType(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	typ := p.GetType(9)
+	typ := p.GetType(7)
+	assert.Nil(t, typ)
+	typ = p.GetType(9)
 	if !assert.NotNil(t, typ) {
 		t.FailNow()
 	}
