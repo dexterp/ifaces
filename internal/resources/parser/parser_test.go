@@ -8,15 +8,15 @@ import (
 )
 
 var (
-	src = `package parser
+	src = fmt.Sprintf(`package %s
 
 import (
 	"io"
 )
 
-//` + `go:generate ifaces head /tmp/pkg/pkg_ifaces.go
+//`+`go:generate ifaces head /tmp/pkg/pkg_ifaces.go
 
-//` + `go:generate ifaces entry /tmp/pkg/pkg_ifaces.go --post Parser 
+//`+`go:generate ifaces entry /tmp/pkg/pkg_ifaces.go --post Parser 
 
 // Parser Parser parses data
 type Parser struct {
@@ -42,7 +42,8 @@ func (d *Data) Scan(item string) bool {
 	return false
 }
 
-`
+`, pkg)
+	pkg     = `mypkg`
 	struct1 = `Parser`
 	line1   = 12
 )
@@ -68,9 +69,9 @@ func TestParser_GetRecvs(t *testing.T) {
 		t.Error(err)
 	}
 	recvs := p.GetRecvs(struct1)
-	for _, recv := range recvs {
-		r := recv.Signature()
-		fmt.Println(r)
+	if assert.Equal(t, 2, len(recvs)) {
+		assert.Regexp(t, `Parse\(.*\)`, recvs[0].Signature())
+		assert.Regexp(t, `Count\(\)`, recvs[1].Signature())
 	}
 }
 
@@ -80,4 +81,10 @@ func TestParser_Imports(t *testing.T) {
 		t.Error(err)
 	}
 	assert.Equal(t, len(p.Imports()), 1)
+}
+
+func TestParser_Package(t *testing.T) {
+	p, err := Parse(`src.go`, []byte(src))
+	assert.NoError(t, err)
+	assert.Equal(t, pkg, p.Package())
 }
