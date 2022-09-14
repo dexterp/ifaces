@@ -29,7 +29,7 @@ func main() {
 
 type run struct {
 	args  *cli.Args
-	gen   *generator.Generator
+	gen   generator.GeneratorIface
 	print print.PrintIface
 }
 

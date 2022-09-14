@@ -11,10 +11,4 @@ import (
 type GeneratorIface interface {
 	// Generate generate interfaces source code for the gen sub command.
 	Generate(srcs []*Src, current *bytes.Buffer, outfile string, output io.Writer) error
-	// Head generate interfaces source code for the head sub command and write to
-	// output. Generate used with a go generator
-	Head(inputfile string, inputsrc any, outfile string, current io.ReadWriter, output io.Writer) error
-	// Entry generate interfaces source code for the item sub command and write to
-	// output
-	Entry(inputfile string, inputsrc any, line int, outfile string, current io.ReadWriter, output io.Writer) error
 }

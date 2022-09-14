@@ -19,7 +19,7 @@ var (
 	Level  int
 )
 
-func MakeIfaceGen() *generator.Generator {
+func MakeIfaceGen() generator.GeneratorIface {
 	return generator.New(generator.Options{
 		Comment: Args.Cmt,
 		Iface:   Args.Iface,
