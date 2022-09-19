@@ -8,6 +8,7 @@ import (
 	"text/template"
 
 	"github.com/dexterp/ifaces/internal/resources/addimports"
+	"github.com/dexterp/ifaces/internal/resources/modinfo"
 	"github.com/dexterp/ifaces/internal/resources/parser"
 	"github.com/dexterp/ifaces/internal/resources/print"
 	"github.com/dexterp/ifaces/internal/resources/tdata"
@@ -98,7 +99,7 @@ func (g Generator) Generate(srcs []*Src, current *bytes.Buffer, outfile string, 
 	return err
 }
 
-func (g Generator) genData(srcs []*Src, pkg string) (*tdata.TData, []addimports.Import, error) {
+func (g Generator) genData(srcs []*Src, pkg string) (*tdata.TData, []addimports.ImportIface, error) {
 	data := &tdata.TData{
 		Comment: g.comment,
 		NoFDoc:  g.noFDoc,
@@ -108,7 +109,7 @@ func (g Generator) genData(srcs []*Src, pkg string) (*tdata.TData, []addimports.
 		Pre:     g.pre,
 		Ifaces:  []*tdata.Interface{},
 	}
-	importsList := []addimports.Import{}
+	importsList := []addimports.ImportIface{}
 	uniqueType := map[string]any{}
 	for i := range srcs {
 		types := []*parser.Type{}
@@ -138,6 +139,11 @@ func (g Generator) genData(srcs []*Src, pkg string) (*tdata.TData, []addimports.
 		}
 		for _, i := range p.Imports() {
 			importsList = append(importsList, i)
+		}
+		importpath, err := modinfo.GetImport(nil, ``, pth)
+		if importpath != `` && err != nil {
+			ip := addimports.NewImport(``, importpath)
+			importsList = append(importsList, ip)
 		}
 		for _, typ := range types {
 			iface := &tdata.Interface{

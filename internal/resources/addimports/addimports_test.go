@@ -52,7 +52,7 @@ func (i MyIO) GetStderr() *os.Stderr {
 	return nil
 }
 `
-	imports := []Import{
+	imports := []ImportIface{
 		&imp{
 			name: ``,
 			path: `io`,

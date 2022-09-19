@@ -9,12 +9,33 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-type Import interface {
+func NewImport(name, path string) *Import {
+	return &Import{
+		name: name,
+		path: path,
+	}
+}
+
+type Import struct {
+	ImportIface
+	name string
+	path string
+}
+
+type ImportIface interface {
 	Name() string
 	Path() string
 }
 
-func AddImports(file string, src any, imports []Import, output io.Writer) error {
+func (i Import) Name() string {
+	return i.name
+}
+
+func (i Import) Path() string {
+	return i.path
+}
+
+func AddImports(file string, src any, imports []ImportIface, output io.Writer) error {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, file, src, parser.ParseComments)
 	if err != nil {
