@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	src1 = `package somepkg
+	src1 = `package originpkg
 
 import (
 	"io"
@@ -37,9 +37,52 @@ func (m *MyStruct) Set(item string) {
 type SomeStruct struct {
 }
 
+// AddData add data doc
+func (m *SomeStruct) AddData(d ...Data) {
+}
+
+// Add add data
+func (m *SomeStruct) Add(d ...any) {
+}
+
+// Collate collate data
+func (m *SomeStruct) Colloate(in []*Data) error {
+	return nil
+}
+
 // Scan scan func document
 func (m SomeStruct) Scan(in io.Reader) error {
 	fmt.Fprintf(os.Stderr, "debug print\n")
+	return nil
+}
+
+// ScanMap scan map func
+func (m SomeStruct) ScanMap(in map[string]string) error {
+	return nil
+}
+
+// ScanMapMap scan map func
+func (m SomeStruct) ScanMapMap(in map[string]map[string]string) error {
+	return nil
+}
+
+// ScanMapSlice scan map func
+func (m SomeStruct) ScanMapSlice(in map[string][]string) error {
+	return nil
+}
+
+// ScanSlice scan slice func
+func (m SomeStruct) ScanSlice(in []string) error {
+	return nil
+}
+
+// ScanSliceMap scan slice map func
+func (m SomeStruct) ScanSliceMap(in []map[string]string) error {
+	return nil
+}
+
+// ScanSliceSlice scan slice map func
+func (m SomeStruct) ScanSliceSlice(in [][]interface{}) error {
 	return nil
 }
 
@@ -53,6 +96,10 @@ type IgnoreStruct struct {
 
 // Connect connect func document
 func (m *IgnoreStruct) Connect(connetstr string) {
+}
+
+// Data
+type Data struct {
 }
 `
 	pre     = `Pre`
@@ -134,8 +181,26 @@ type PreMyStructPost interface {
 
 // PreSomeStructPost type document
 type PreSomeStructPost interface {
+	// AddData add data doc
+	AddData(d ...originpkg.Data)
+	// Add add data
+	Add(d ...any)
+	// Collate collate data
+	Colloate(in []*originpkg.Data) error
 	// Scan scan func document
 	Scan(in io.Reader) error
+	// ScanMap scan map func
+	ScanMap(in map[string]string) error
+	// ScanMapMap scan map func
+	ScanMapMap(in map[string]map[string]string) error
+	// ScanMapSlice scan map func
+	ScanMapSlice(in map[string][]string) error
+	// ScanSlice scan slice func
+	ScanSlice(in []string) error
+	// ScanSliceMap scan slice map func
+	ScanSliceMap(in []map[string]string) error
+	// ScanSliceSlice scan slice map func
+	ScanSliceSlice(in [][]interface{}) error
 	// Delete delete func document
 	Delete() error
 }
@@ -254,8 +319,26 @@ type Iface interface {
 
 // PreSomeStructPost type document
 type PreSomeStructPost interface {
+	// AddData add data doc
+	AddData(d ...originpkg.Data)
+	// Add add data
+	Add(d ...any)
+	// Collate collate data
+	Colloate(in []*originpkg.Data) error
 	// Scan scan func document
 	Scan(in io.Reader) error
+	// ScanMap scan map func
+	ScanMap(in map[string]string) error
+	// ScanMapMap scan map func
+	ScanMapMap(in map[string]map[string]string) error
+	// ScanMapSlice scan map func
+	ScanMapSlice(in map[string][]string) error
+	// ScanSlice scan slice func
+	ScanSlice(in []string) error
+	// ScanSliceMap scan slice map func
+	ScanSliceMap(in []map[string]string) error
+	// ScanSliceSlice scan slice map func
+	ScanSliceSlice(in [][]interface{}) error
 	// Delete delete func document
 	Delete() error
 }
@@ -313,8 +396,26 @@ type Iface interface {
 }
 
 type PreSomeStructPost interface {
+	// AddData add data doc
+	AddData(d ...originpkg.Data)
+	// Add add data
+	Add(d ...any)
+	// Collate collate data
+	Colloate(in []*originpkg.Data) error
 	// Scan scan func document
 	Scan(in io.Reader) error
+	// ScanMap scan map func
+	ScanMap(in map[string]string) error
+	// ScanMapMap scan map func
+	ScanMapMap(in map[string]map[string]string) error
+	// ScanMapSlice scan map func
+	ScanMapSlice(in map[string][]string) error
+	// ScanSlice scan slice func
+	ScanSlice(in []string) error
+	// ScanSliceMap scan slice map func
+	ScanSliceMap(in []map[string]string) error
+	// ScanSliceSlice scan slice map func
+	ScanSliceSlice(in [][]interface{}) error
 	// Delete delete func document
 	Delete() error
 }
@@ -374,7 +475,16 @@ type Iface interface {
 
 // PreSomeStructPost type document
 type PreSomeStructPost interface {
+	AddData(d ...originpkg.Data)
+	Add(d ...any)
+	Colloate(in []*originpkg.Data) error
 	Scan(in io.Reader) error
+	ScanMap(in map[string]string) error
+	ScanMapMap(in map[string]map[string]string) error
+	ScanMapSlice(in map[string][]string) error
+	ScanSlice(in []string) error
+	ScanSliceMap(in []map[string]string) error
+	ScanSliceSlice(in [][]interface{}) error
 	Delete() error
 }
 `, pkg)

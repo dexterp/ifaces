@@ -51,10 +51,10 @@ func (r run) runGen() {
 	}
 	var outfile io.Writer
 	var closer func()
-	if r.args.Print {
+	if r.args.Print || r.args.Out == `` {
 		outfile, closer = r.outWriter(r.args.Out, os.Stdout)
 	} else {
-		outfile, closer = r.outWriter(r.args.Out, nil)
+		outfile, closer = r.outWriter(r.args.Out)
 	}
 	defer closer()
 	_, err = io.Copy(outfile, bufOutput)
@@ -76,14 +76,9 @@ func getArgs() *cli.Args {
 
 func (r run) srcList() (srcs []*generator.Src) {
 	for _, file := range r.args.Srcs {
-		f, err := os.Open(file)
-		if err != nil {
-			r.print.Warnf(`skipping file %s: %s\n`, file, err.Error())
-			continue
-		}
 		srcs = append(srcs, &generator.Src{
 			File: file,
-			Src:  f,
+			Src:  nil,
 		})
 	}
 	if envs.Gofile() != `` || envs.Goline() > 0 {
@@ -118,15 +113,27 @@ func (r run) curGenSrc() *bytes.Buffer {
 	return cur
 }
 
-func (r run) outWriter(file string, output io.Writer) (io.Writer, func()) {
-	f, err := os.OpenFile(file, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0777)
-	if err != nil {
-		r.print.Errorf(`can not open file %s: %s`, file, err.Error())
-		os.Exit(-1)
+func (r run) outWriter(file string, writers ...io.Writer) (io.Writer, func()) {
+	var (
+		closers []io.Closer
+		wrtrs   []io.Writer
+	)
+	if file != `` {
+		f, err := os.OpenFile(file, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0777)
+		if err != nil {
+			r.print.Errorf(`can not open file %s: %s`, file, err.Error())
+			os.Exit(-1)
+		}
+		wrtrs = append(wrtrs, f)
+		closers = append(closers, f)
 	}
-	if output != nil {
-		multi := io.MultiWriter(f, output)
-		return multi, func() { f.Close() }
+	if writers != nil {
+		wrtrs = append(wrtrs, writers...)
 	}
-	return f, func() { f.Close() }
+	multi := io.MultiWriter(wrtrs...)
+	return multi, func() {
+		for _, c := range closers {
+			c.Close()
+		}
+	}
 }

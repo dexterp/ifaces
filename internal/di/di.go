@@ -39,7 +39,7 @@ func MakeIfaceGen() generator.GeneratorIface {
 
 var cachePrint *print.Print
 
-func MakePrint() print.PrintIface {
+func MakePrint() *print.Print {
 	if cachePrint == nil {
 		cachePrint = print.New(print.Options{
 			Stderr: Stderr,

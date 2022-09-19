@@ -62,25 +62,17 @@ clean: ## Reset project to original state
 test: ## Test
 	$(MAKE) test_setup
 	$(MAKE) lint
-	@echo FEATURE FLAGS ENABLED
-	FF_ENABLED=true $(MAKE) _test_fflags
-	@echo FEATURE FLAGS DISABLED
-	FF_ENABLED=false $(MAKE) _test_std
+	$(MAKE) _test
 	@# Combined the return codes of all the tests
 	@echo "Exit codes, unit tests: $$(cat reports/exitcode-unit.txt), golangci-lint: $$(cat reports/exitcode-golangci-lint.txt), golint: $$(cat reports/exitcode-golint.txt)"
 	@exit $$(( $$(cat reports/exitcode-unit.txt) + $$(cat reports/exitcode-golangci-lint.txt) + $$(cat reports/exitcode-golint.txt) ))
 
 # Test without feature flags
-.PHONY: _test_std
-_test_std:
+.PHONY: _test
+_test:
 	$(MAKE) unit
 	$(MAKE) cx
 	$(MAKE) cc
-
-# Test with feature flags
-.PHONY: _test_fflags
-_test_fflags:
-	$(MAKE) unit
 
 .PHONY: _unit
 _unit:

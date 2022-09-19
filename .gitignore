@@ -20,6 +20,9 @@
 # Mac
 .DS_Store
 
+# VSCode
+.vscode
+
 # Project
 /dist/
 /reports/
