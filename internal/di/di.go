@@ -23,13 +23,14 @@ func MakeIfaceGen() generator.GeneratorIface {
 	return generator.New(generator.Options{
 		Comment: Args.Cmt,
 		Iface:   Args.Iface,
+		Match:   Args.Match,
 		NoFDoc:  Args.NoFDoc,
 		NoTDoc:  Args.NoTDoc,
 		Pkg:     Args.Pkg,
 		Post:    Args.Post,
 		Pre:     Args.Pre,
 		Print:   MakePrint(),
-		Match:   Args.Match,
+		Struct:  Args.Struct,
 	})
 }
 
@@ -39,7 +40,7 @@ func MakeIfaceGen() generator.GeneratorIface {
 
 var cachePrint *print.Print
 
-func MakePrint() *print.Print {
+func MakePrint() print.PrintIface {
 	if cachePrint == nil {
 		cachePrint = print.New(print.Options{
 			Stderr: Stderr,

@@ -26,23 +26,23 @@ type Generator struct {
 	pkg     string
 	post    string
 	pre     string
-	print   *print.Print
+	print   print.PrintIface
 	struc   bool
 	wild    string
 }
 
 // Options
 type Options struct {
-	Comment string       // Comment comment at the top of the file
-	Iface   string       // Iface explicitly set interface name
-	NoFDoc  bool         // NoFDoc omit copying function documentation
-	NoTDoc  bool         // NoTDoc omit copying type documentation
-	Pkg     string       // Pkg package name
-	Post    string       // Post postfix to interface name
-	Pre     string       // Pre prefix to interface name
-	Print   *print.Print // Print handler
-	Struct  bool         // Struct generate an interface for all structs
-	Match   string       // Wild wildcard match
+	Comment string           // Comment comment at the top of the file
+	Iface   string           // Iface explicitly set interface name
+	NoFDoc  bool             // NoFDoc omit copying function documentation
+	NoTDoc  bool             // NoTDoc omit copying type documentation
+	Pkg     string           // Pkg package name
+	Post    string           // Post postfix to interface name
+	Pre     string           // Pre prefix to interface name
+	Print   print.PrintIface // Print handler
+	Struct  bool             // Struct generate an interface for all structs
+	Match   string           // Wild wildcard match
 }
 
 // New generate IfaceGen
