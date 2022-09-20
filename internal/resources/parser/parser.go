@@ -539,7 +539,11 @@ func (f funcDecl) String() string {
 
 	n := len(f.returns)
 	if n == 1 {
-		buf.WriteString(` ` + f.returns[0].string())
+		if strings.Contains(f.returns[0].string(), " ") {
+			buf.WriteString(` (` + f.returns[0].string() + `)`)
+		} else {
+			buf.WriteString(` ` + f.returns[0].string())
+		}
 	} else if n > 0 {
 		l := []string{}
 		for _, p := range f.returns {

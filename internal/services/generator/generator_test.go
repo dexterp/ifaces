@@ -23,7 +23,7 @@ type MyStruct struct {
 }
 
 // Get func doc
-func (m MyStruct) Get() string {
+func (m MyStruct) Get() (item string) {
 	return ""
 }
 
@@ -135,7 +135,7 @@ package %s
 // PreMyStructPost type document
 type PreMyStructPost interface {
 	// Get func doc
-	Get() string
+	Get() (item string)
 	// Set func doc
 	Set(item string)
 }
@@ -174,7 +174,7 @@ import (
 // PreMyStructPost type document
 type PreMyStructPost interface {
 	// Get func doc
-	Get() string
+	Get() (item string)
 	// Set func doc
 	Set(item string)
 }
@@ -240,7 +240,7 @@ package %s
 
 type PreMyStructPost interface {
 	// Get func doc
-	Get() string
+	Get() (item string)
 	// Set func doc
 	Set(item string)
 }
@@ -274,7 +274,7 @@ package %s
 
 // PreMyStructPost type document
 type PreMyStructPost interface {
-	Get() string
+	Get() (item string)
 	Set(item string)
 }
 `, pkg)

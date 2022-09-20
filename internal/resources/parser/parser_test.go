@@ -161,7 +161,7 @@ func makeFuncType(inFunc, inGenerics, inParams, inRet string) string {
 	if inGenericsWrap != `` {
 		inGenericsWrap = `[` + inGenericsWrap + `]`
 	}
-	if strings.Contains(inRetWrap, `,`) {
+	if strings.Contains(inRetWrap, `,`) || strings.Contains(inRetWrap, " ") {
 		inRetWrap = `(` + inRetWrap + `)`
 	}
 	return fmt.Sprintf(`%s%s(%s) %s`, inFunc, inGenericsWrap, inParams, inRetWrap)

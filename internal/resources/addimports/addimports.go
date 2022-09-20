@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"io"
 
+	"github.com/pkg/errors"
 	"golang.org/x/tools/go/ast/astutil"
 )
 
@@ -37,9 +38,9 @@ func (i Import) Path() string {
 
 func AddImports(file string, src any, imports []ImportIface, output io.Writer) error {
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, file, src, parser.ParseComments)
+	f, err := parser.ParseFile(fset, file, src, parser.ParseComments|parser.DeclarationErrors)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "unable to add import")
 	}
 	chk := &hasPath{}
 	for _, i := range f.Imports {
