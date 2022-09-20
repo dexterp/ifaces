@@ -111,7 +111,7 @@ func TestParseSig(t *testing.T) {
 	inParams := `host string, port string`
 	inRets := `*Conn, error`
 	inSig := fmt.Sprintf(`%s(%s)%s`, inFunc, inParams, inRets)
-	outFunc, outGenerics, outParams, outRets := parseSig(inSig)
+	outFunc, outGenerics, outParams, outRets := parseFuncDecl(inSig)
 	assert.Equal(t, inFunc, outFunc)
 	assert.Equal(t, ``, outGenerics)
 	assert.Equal(t, inParams, outParams)

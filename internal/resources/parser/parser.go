@@ -375,7 +375,7 @@ func typeName(n ast.Node, src []byte) string {
 }
 
 func toFuncDecl(pkg string, hastype hasType, funcdecl string) *funcDecl {
-	name, generics, params, returns := parseSig(funcdecl)
+	name, generics, params, returns := parseFuncDecl(funcdecl)
 	decl := &funcDecl{
 		name:     name,
 		generics: parseGenerics(pkg, hastype, generics),
@@ -385,7 +385,7 @@ func toFuncDecl(pkg string, hastype hasType, funcdecl string) *funcDecl {
 	return decl
 }
 
-func parseSig(sig string) (name, generics, params, ret string) {
+func parseFuncDecl(sig string) (name, generics, params, ret string) {
 	mtchs := regexSignature.FindStringSubmatch(sig)
 	if mtchs == nil {
 		return ``, ``, ``, ``
@@ -394,24 +394,45 @@ func parseSig(sig string) (name, generics, params, ret string) {
 }
 
 func parseParams(pkg string, hastype hasType, paramsstr string) (params []*param) {
+	var (
+		paramsList [][]string
+		maxlen     int
+	)
 	for _, p := range strings.Split(paramsstr, `,`) {
 		p = strings.TrimSpace(p)
-		m := strings.Split(p, ` `)
-		switch len(m) {
-		case 1:
-			params = append(params, &param{
-				hastype: hastype,
-				pkg:     pkg,
-				name:    m[0],
-			})
-		case 2:
+		pair := strings.Split(p, ` `)
+		paramsList = append(paramsList, pair)
+		if len(pair) > maxlen {
+			maxlen = len(pair)
+		}
+	}
+
+	for _, pair := range paramsList {
+		if maxlen == 2 { // named params
+			switch len(pair) {
+			case 1:
+				params = append(params, &param{
+					hastype: hastype,
+					pkg:     pkg,
+					name:    pair[0],
+				})
+			case 2:
+				params = append(params, &param{
+					hastype:  hastype,
+					pkg:      pkg,
+					name:     pair[0],
+					typ:      parseTyp(pkg, hastype, pair[1]),
+					typMap:   parseTypMap(pkg, hastype, pair[1]),
+					typSlice: parseTypSlice(pkg, hastype, pair[1]),
+				})
+			}
+		} else {
 			params = append(params, &param{
 				hastype:  hastype,
 				pkg:      pkg,
-				name:     m[0],
-				typ:      parseTyp(pkg, hastype, m[1]),
-				typMap:   parseTypMap(pkg, hastype, m[1]),
-				typSlice: parseTypSlice(pkg, hastype, m[1]),
+				typ:      parseTyp(pkg, hastype, pair[0]),
+				typMap:   parseTypMap(pkg, hastype, pair[0]),
+				typSlice: parseTypSlice(pkg, hastype, pair[0]),
 			})
 		}
 	}
