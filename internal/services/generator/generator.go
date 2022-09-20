@@ -112,9 +112,7 @@ func (g Generator) genData(srcs []*Src, pkg string) (*tdata.TData, []addimports.
 	importsList := []addimports.ImportIface{}
 	uniqueType := map[string]any{}
 	for i := range srcs {
-		types := []*parser.Type{}
 		pth := srcs[i].File
-		line := srcs[i].Line
 		src := srcs[i].Src
 		p, err := parser.Parse(pth, src)
 		if err != nil {
@@ -124,27 +122,7 @@ func (g Generator) genData(srcs []*Src, pkg string) (*tdata.TData, []addimports.
 		if len(srcs) == 1 && data.Pkg == `` {
 			data.Pkg = p.Package()
 		}
-		if g.struc {
-			types = append(types, p.TypeByType(parser.StructType)...)
-		}
-		if g.wild != `` {
-			types = append(types, p.TypeByPattern(g.wild)...)
-		}
-		// TODO -Follow bug "types == nil" fails if "len(types) == 0"
-		if len(types) == 0 && line > 0 {
-			typ := p.GetType(line)
-			if typ != nil {
-				types = append(types, typ)
-			}
-		}
-		for _, i := range p.Imports() {
-			importsList = append(importsList, i)
-		}
-		importpath, err := modinfo.GetImport(nil, ``, pth)
-		if importpath != `` && err != nil {
-			ip := addimports.NewImport(``, importpath)
-			importsList = append(importsList, ip)
-		}
+		types := g.getTypeList(p, srcs[i])
 		for _, typ := range types {
 			iface := &tdata.Interface{
 				Type: &tdata.Type{
@@ -152,22 +130,9 @@ func (g Generator) genData(srcs []*Src, pkg string) (*tdata.TData, []addimports.
 					Iface:  g.iface,
 					Pre:    g.pre,
 					Post:   g.post,
-					Decl:   typ},
-			}
-			recvs := p.GetRecvs(typ.Name())
-			for _, recv := range recvs {
-				// skip generics
-				if recv.UsesGenerics() {
-					continue
-				}
-				if data.Pkg != p.Package() {
-					recv.SetPkg(p.Package())
-				}
-				r := &tdata.Recv{
-					NoFDoc: g.noFDoc,
-					Recv:   recv,
-				}
-				iface.Recvs = append(iface.Recvs, r)
+					Decl:   typ,
+				},
+				Recvs: g.getRecvs(p, data.Pkg, typ.Name()),
 			}
 			_, ok := uniqueType[typ.Name()]
 			if len(iface.Recvs) > 0 && !ok {
@@ -175,8 +140,59 @@ func (g Generator) genData(srcs []*Src, pkg string) (*tdata.TData, []addimports.
 				uniqueType[typ.Name()] = struct{}{}
 			}
 		}
+		importsList = append(importsList, g.getImportsList(p, srcs[i])...)
 	}
 	return data, importsList, nil
+}
+
+func (g Generator) getImportsList(p *parser.Parser, src *Src) (importsList []addimports.ImportIface) {
+	pth := src.File
+	for _, i := range p.Imports() {
+		importsList = append(importsList, i)
+	}
+	importpath, err := modinfo.GetImport(nil, ``, pth)
+	if importpath != `` && err != nil {
+		ip := addimports.NewImport(``, importpath)
+		importsList = append(importsList, ip)
+	}
+	return
+}
+
+func (g Generator) getTypeList(p *parser.Parser, src *Src) (types []*parser.Type) {
+	line := src.Line
+	if g.struc {
+		types = append(types, p.TypeByType(parser.StructType)...)
+	}
+	if g.wild != `` {
+		types = append(types, p.TypeByPattern(g.wild)...)
+	}
+	// TODO -Follow bug "types == nil" fails if "len(types) == 0"
+	if len(types) == 0 && line > 0 {
+		typ := p.GetType(line)
+		if typ != nil {
+			types = append(types, typ)
+		}
+	}
+	return
+}
+
+func (g Generator) getRecvs(p *parser.Parser, pkg, typename string) (tdatarecv []*tdata.Recv) {
+	recvs := p.GetRecvs(typename)
+	for _, recv := range recvs {
+		// skip generics
+		if recv.UsesGenerics() {
+			continue
+		}
+		if pkg != p.Package() {
+			recv.SetPkg(p.Package())
+		}
+		r := &tdata.Recv{
+			NoFDoc: g.noFDoc,
+			Recv:   recv,
+		}
+		tdatarecv = append(tdatarecv, r)
+	}
+	return
 }
 
 func (g Generator) applyTemplate(current *bytes.Buffer, data *tdata.TData) error {
