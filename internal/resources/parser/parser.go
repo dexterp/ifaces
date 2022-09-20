@@ -337,12 +337,24 @@ func (r Recv) Doc() string {
 
 // Signature return the function signature
 func (r Recv) Signature() string {
+	sig := r.signature()
+	f := toFuncDecl(r.pkg, r.hasType, sig)
+	return f.String()
+}
+
+func (r Recv) signature() string {
 	buf := new(bytes.Buffer)
 	printer.Fprint(buf, r.fset, r.funcDecl.Type)
 	sig := strings.Replace(buf.String(), `func`, r.funcDecl.Name.String(), 1)
 	sig = strings.TrimSuffix(sig, "\n")
+	return sig
+}
+
+// UsesGenerics returns true if function declaration contains generic types
+func (r Recv) UsesGenerics() bool {
+	sig := r.signature()
 	f := toFuncDecl(r.pkg, r.hasType, sig)
-	return f.String()
+	return f.UsesGenerics()
 }
 
 func getReceiverTypeName(fd *ast.FuncDecl, src *[]byte) string {
@@ -412,8 +424,8 @@ func parseGenerics(pkg string, hastype hasType, gen string) (generics []*genrics
 	}
 	for _, g := range strings.Split(gen, `,`) {
 		var (
-			name, typ  string
-			alternates []string
+			name, typStr string
+			alternates   []*typ
 		)
 
 		genrune := []rune(strings.TrimSpace(g))
@@ -421,14 +433,17 @@ func parseGenerics(pkg string, hastype hasType, gen string) (generics []*genrics
 			if unicode.IsSpace(ch) {
 				name = string(genrune[:i])
 				if len(genrune) > i+1 {
-					typ = string(genrune[i+1:])
+					typStr = string(genrune[i+1:])
 				}
 				break
 			}
 		}
-		for _, t := range strings.Split(typ, `|`) {
+		for _, t := range strings.Split(typStr, `|`) {
 			t = strings.TrimSpace(t)
-			alternates = append(alternates, t)
+			curType := parseTyp(pkg, hastype, t)
+			if curType != nil {
+				alternates = append(alternates, curType)
+			}
 		}
 		generics = append(generics, &genrics{
 			hastype: hastype,
@@ -494,6 +509,10 @@ type funcDecl struct {
 	generics []*genrics
 	params   []*param
 	returns  []*param
+}
+
+func (f funcDecl) UsesGenerics() bool {
+	return f.generics != nil
 }
 
 func (f funcDecl) String() string {
@@ -570,11 +589,17 @@ type genrics struct {
 	pkg     string
 	hastype hasType
 	name    string
-	typ     []string
+	typ     []*typ
 }
 
-func (g genrics) Types() []string {
-	return g.typ
+func (g genrics) Types() (types []string) {
+	if g.typ == nil {
+		return
+	}
+	for _, t := range g.typ {
+		types = append(types, t.string())
+	}
+	return types
 }
 
 func (g genrics) String() string {

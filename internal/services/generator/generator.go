@@ -156,6 +156,10 @@ func (g Generator) genData(srcs []*Src, pkg string) (*tdata.TData, []addimports.
 			}
 			recvs := p.GetRecvs(typ.Name())
 			for _, recv := range recvs {
+				// skip generics
+				if recv.UsesGenerics() {
+					continue
+				}
 				if data.Pkg != p.Package() {
 					recv.SetPkg(p.Package())
 				}
