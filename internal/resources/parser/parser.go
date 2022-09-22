@@ -539,7 +539,14 @@ func (f funcDecl) UsesGenerics() bool {
 func (f funcDecl) String() string {
 	buf := &bytes.Buffer{}
 	buf.WriteString(f.name)
+	buf.WriteString(f.stringGenerics())
+	buf.WriteString(f.stringParams())
+	buf.WriteString(f.stringReturns())
+	return buf.String()
+}
 
+func (f funcDecl) stringGenerics() string {
+	buf := &bytes.Buffer{}
 	if len(f.generics) > 0 {
 		items := []string{}
 		for _, g := range f.generics {
@@ -547,7 +554,11 @@ func (f funcDecl) String() string {
 		}
 		buf.WriteString(`[` + strings.Join(items, `, `) + `]`)
 	}
+	return buf.String()
+}
 
+func (f funcDecl) stringParams() string {
+	buf := &bytes.Buffer{}
 	if len(f.params) == 0 {
 		buf.WriteString(`()`)
 	} else {
@@ -557,7 +568,11 @@ func (f funcDecl) String() string {
 		}
 		buf.WriteString(`(` + strings.Join(l, `, `) + `)`)
 	}
+	return buf.String()
+}
 
+func (f funcDecl) stringReturns() string {
+	buf := &bytes.Buffer{}
 	n := len(f.returns)
 	if n == 1 {
 		if strings.Contains(f.returns[0].string(), " ") {
