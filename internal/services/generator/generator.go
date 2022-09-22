@@ -3,6 +3,7 @@ package generator
 import (
 	"bytes"
 	_ "embed"
+	"errors"
 	"io"
 	"path/filepath"
 	"text/template"
@@ -67,6 +68,8 @@ var gentmpl string
 //go:embed entity.gotmpl
 var entrytmpl string
 
+var ErrorNoSourceFile = errors.New(`no source files processed`)
+
 // Generate generate interfaces source code for the gen sub command.
 func (g Generator) Generate(srcs []*Src, current *bytes.Buffer, outfile string, output io.Writer) error {
 	pkg, err := g.pckage(outfile)
@@ -111,14 +114,19 @@ func (g Generator) genData(srcs []*Src, pkg string) (*tdata.TData, []addimports.
 	}
 	importsList := []addimports.ImportIface{}
 	uniqueType := map[string]any{}
+	foundFile := false
 	for i := range srcs {
 		pth := srcs[i].File
 		src := srcs[i].Src
 		p, err := parser.Parse(pth, src)
 		if err != nil {
-			g.print.Warnf(`skipping "%s" due to error: %s`, pth, err)
+			if errors.Unwrap(err) != nil {
+				err = errors.Unwrap(err)
+			}
+			g.print.Warnf("skipping \"%s\": %s\n", pth, err.Error())
 			continue
 		}
+		foundFile = true
 		if len(srcs) == 1 && data.Pkg == `` {
 			data.Pkg = p.Package()
 		}
@@ -141,6 +149,9 @@ func (g Generator) genData(srcs []*Src, pkg string) (*tdata.TData, []addimports.
 			}
 		}
 		importsList = append(importsList, g.getImportsList(p, srcs[i])...)
+	}
+	if !foundFile {
+		return nil, nil, ErrorNoSourceFile
 	}
 	return data, importsList, nil
 }
@@ -210,6 +221,7 @@ func (g Generator) applyTemplate(current *bytes.Buffer, data *tdata.TData) error
 	return nil
 }
 
+// pckage name of package in the output source.
 func (g Generator) pckage(out string) (string, error) {
 	if g.pkg != `` {
 		return g.pkg, nil
