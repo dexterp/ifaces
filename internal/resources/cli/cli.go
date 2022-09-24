@@ -9,9 +9,16 @@ import (
 )
 
 var usage = `Usage:
-  ifaces [<out>] [(-f <src>)...] [-a] [--pre <pre>] [--post <post>] [-c <cmt>] [-p <pkg>] [-m <mtch>] [--struct] [-i <iface>] [--no-tdoc] [--no-fdoc] [--print]
+  ifaces type [<out>] [(-f <src>)...] [-a] [-p <pkg>] [-i <iface>] [-t <type>] [-s] [--pre <pre>] [--post <post>] [--no-tdoc] [--no-fdoc] [-c <cmt>] [--print]
+  ifaces recv [<out>] [(-f <src>)...] [-a] [-p <pkg>] [-i <iface>] [-t <type>] [-r <func>] [--pre <pre>] [--post <post>] [--no-tdoc] [--no-fdoc] [-c <cmt>] [--print]
 
 Options:
+  type            Generate interfaces for either all structs, a set of matching
+                  types or the first type found after a go:generate command in a
+                  Go source file.
+  recv            Generate interface for an individual receiver from the command
+                  line or the first receiver found after a go:generate command
+                  in a Go source file.
   -h              Show this screen.
   <out>           Output file. Truncated unless -a is set. 
   -a              Add to output file instead of truncating.
@@ -19,16 +26,18 @@ Options:
   -f <src>        Source file to scan.
   -i <iface>      Optional interface type name. If omitted the type name is used
                   with a prefix and/or suffix added.
-  --no-fdoc       Do not copy function docs to the interface function.
-  --no-tdoc       Do not copy typedoc from type.
+  --no-fdoc       Do not copy function docs to the interface function type.
+  --no-tdoc       Do not copy doc from the source type to the interface type.
   -p <pkg>        Package name. Defaults to the parent directory name.
   --post <post>   Add a suffix to interface type name.
   --pre <pre>     Add a prefix to interface type name.
-  --print         Print generated source to stdout.
-  --struct        Generate an interface for all structs.
+  --print         Print generated source to stdout. The default when no output
+                  file is provided.
+  -r <func>       Receiver function match.
+  -s              Generate an interface for all structs.
   --tdoc <tdoc>   Custom type document. Defaults to the document from the origin
                   source type.
-  -m <mtch>       Generate interfaces for types that match a wildcard.
+  -t <type>       Generate interfaces for types that match a wildcard.
  `
 
 func ParseArgs(argv []string, version string, stdout io.Writer, stderr io.Writer) (*Args, error) {
@@ -62,19 +71,22 @@ func ParseArgs(argv []string, version string, stdout io.Writer, stderr io.Writer
 }
 
 type Args struct {
-	Out string `docopt:"<out>"`
+	SubType bool   `docopt:"type"`
+	SubRecv bool   `docopt:"recv"`
+	Out     string `docopt:"<out>"`
 
-	Append bool     `docopt:"-a"`
-	Cmt    string   `docopt:"-c"`
-	Iface  string   `docopt:"-i"`
-	NoFDoc bool     `docopt:"--no-fdoc"`
-	NoTDoc bool     `docopt:"--no-tdoc"`
-	Pkg    string   `docopt:"-p"`
-	Post   string   `docopt:"--post"`
-	Pre    string   `docopt:"--pre"`
-	Print  bool     `docopt:"--print"`
-	Srcs   []string `docopt:"-f"`
-	Struct bool     `docopt:"--struct"`
-	TDoc   string   `docopt:"--tdoc"`
-	Match  string   `docopt:"-m"`
+	Append    bool     `docopt:"-a"`
+	Cmt       string   `docopt:"-c"`
+	Iface     string   `docopt:"-i"`
+	MatchFunc string   `docopt:"-r"`
+	MatchType string   `docopt:"-t"`
+	NoFDoc    bool     `docopt:"--no-fdoc"`
+	NoTDoc    bool     `docopt:"--no-tdoc"`
+	Pkg       string   `docopt:"-p"`
+	Post      string   `docopt:"--post"`
+	Pre       string   `docopt:"--pre"`
+	Print     bool     `docopt:"--print"`
+	Srcs      []string `docopt:"-f"`
+	Struct    bool     `docopt:"-s"`
+	TDoc      string   `docopt:"--tdoc"`
 }

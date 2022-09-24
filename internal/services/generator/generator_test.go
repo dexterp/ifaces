@@ -141,6 +141,7 @@ type PreMyStructPost interface {
 }
 `, pkg)
 	assert.Equal(t, expected, out.String())
+	fmt.Println(out.String())
 }
 
 func TestGenerator_Gen_Struct(t *testing.T) {
@@ -212,6 +213,7 @@ type PreIgnoreStructPost interface {
 }
 `, pkg)
 	assert.Equal(t, expected, out.String())
+	fmt.Println(out.String())
 }
 
 func TestGenerator_Gen_NoTypeDoc(t *testing.T) {
@@ -354,7 +356,7 @@ type PreSomeStructPost interface {
 	in := &bytes.Buffer{}
 	in.WriteString(curSrc)
 	out := &bytes.Buffer{}
-	err := gen.Generate(srcs, in, "test_ifaces.go", out)
+	err := gen.Generate(srcs, in, "src_ifaces.go", out)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, out.String())
 }
@@ -390,7 +392,6 @@ import (
 	"os"
 )
 
-// Iface
 type Iface interface {
 	SetStderr(stderr *os.Stderr)
 }

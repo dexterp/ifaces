@@ -4,12 +4,16 @@ package tdata
 import (
 	"bufio"
 	"bytes"
-	"fmt"
+	"errors"
 	"regexp"
 	"strings"
 
-	"github.com/dexterp/ifaces/internal/resources/parser"
 	"github.com/mitchellh/go-wordwrap"
+)
+
+var (
+	ErrorDuplicateInterface = errors.New(`can not add duplicate interface`)
+	ErrorDuplicateMethod    = errors.New(`can not add duplicate method`)
 )
 
 type TData struct {
@@ -20,73 +24,115 @@ type TData struct {
 	Post    string // Post postfix to interface name
 	Pre     string // Pre prefix to interface name
 	Ifaces  []*Interface
+	unique  map[string]*Interface
+}
+
+// Add add an interface
+func (t *TData) Add(iface *Interface) error {
+	if t.unique == nil {
+		t.unique = map[string]*Interface{}
+	}
+	if _, ok := t.unique[iface.Type.name]; ok {
+		return ErrorDuplicateInterface
+	}
+	t.unique[iface.Type.name] = iface
+	t.Ifaces = append(t.Ifaces, iface)
+	return nil
+}
+
+func (t TData) Get(iface string) *Interface {
+	if i, ok := t.unique[iface]; ok {
+		return i
+	}
+	return nil
+}
+
+func (t *TData) AddOrGet(iface *Interface) (*Interface, error) {
+	err := t.Add(iface)
+	if err != nil {
+		if err == ErrorDuplicateInterface {
+			return t.Get(iface.Type.name), nil
+		}
+		return nil, err
+	}
+	return iface, nil
 }
 
 type Interface struct {
-	Type  *Type   // TypeDecl type declaration
-	Recvs []*Recv // Recvs list of recevers to add to template
+	Type    *Type     // TypeDecl type declaration
+	Methods []*Method // Methods list of methods
+	unique  map[string]*Method
 }
 
-type Import struct {
-	imp *parser.Import
+// Add add method to the interface
+func (i *Interface) Add(method *Method) error {
+	if i.unique == nil {
+		i.unique = map[string]*Method{}
+	}
+	if _, ok := i.unique[method.name]; ok {
+		return ErrorDuplicateMethod
+	}
+	i.unique[method.name] = method
+	i.Methods = append(i.Methods, method)
+	return nil
 }
 
-func (i Import) Name() string {
-	return i.imp.Name()
-}
-
-func (i Import) Path() string {
-	return i.imp.Path()
+func NewType(name, doc string, noTypeDoc bool) *Type {
+	return &Type{
+		name:      name,
+		doc:       doc,
+		noTypeDoc: noTypeDoc,
+	}
 }
 
 type Type struct {
-	NoTDoc bool
-	TDoc   string
-	Post   string
-	Iface  string
-	Pre    string
-	Decl   *parser.Type
+	noTypeDoc bool
+	name      string
+	doc       string
 }
 
 func (t Type) Doc() string {
-	if t.NoTDoc {
+	if t.noTypeDoc {
 		return ``
-	} else if t.TDoc != `` {
-		return `// ` + t.TDoc
 	}
 	re := regexp.MustCompile(`^\w+`)
-	doc := t.Decl.Doc()
-
-	doc = re.ReplaceAllString(doc, t.Name())
+	doc := re.ReplaceAllString(t.doc, t.Name())
 	return wrapDoc(doc, false)
 }
 
 func (t Type) Name() string {
-	iface := t.Iface
-	if iface == `` {
-		iface = t.Decl.Name()
+	return t.name
+}
+
+func NewMethod(name, signature, doc string, nofdoc bool) *Method {
+	return &Method{
+		name:      name,
+		doc:       doc,
+		signature: signature,
+		noFuncDoc: nofdoc,
 	}
-	return fmt.Sprint(t.Pre, iface, t.Post)
 }
 
-type Recv struct {
-	NoFDoc bool
-	Recv   *parser.Recv
+type Method struct {
+	noFuncDoc bool
+	name      string
+	doc       string
+	signature string
 }
 
-func (r Recv) Doc() string {
-	if r.NoFDoc {
+func (r Method) Doc() string {
+	if r.noFuncDoc {
 		return ``
 	}
-	doc := wrapDoc(r.Recv.Doc(), true)
+	doc := wrapDoc(r.doc, true)
 	if len(doc) > 0 {
 		return doc + "\t"
 	}
 	return ``
 }
 
-func (r Recv) Signature() string {
-	return r.Recv.Signature()
+func (r Method) Signature() string {
+	return r.signature
 }
 
 func wrapDoc(doc string, indent bool) string {

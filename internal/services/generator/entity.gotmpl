@@ -1,8 +1,0 @@
-{{ range $i := .Ifaces }}
-{{ $i.Type.Doc }}type {{ $i.Type.Name }} interface {
-{{- range $recv := $i.Recvs }}
-	{{ $recv.Doc }}{{ $recv.Signature }}
-{{- end }}
-}
-
-{{ end }}

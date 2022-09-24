@@ -23,7 +23,7 @@ func MakeIfaceGen() generator.GeneratorIface {
 	return generator.New(generator.Options{
 		Comment: Args.Cmt,
 		Iface:   Args.Iface,
-		Match:   Args.Match,
+		Match:   Args.MatchType,
 		NoFDoc:  Args.NoFDoc,
 		NoTDoc:  Args.NoTDoc,
 		Pkg:     Args.Pkg,

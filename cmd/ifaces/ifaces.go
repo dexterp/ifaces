@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 
@@ -15,6 +16,10 @@ import (
 
 func main() {
 	args := getArgs()
+	if args.SubRecv {
+		fmt.Fprintln(os.Stderr, `the recv sub command is currently in development`)
+		os.Exit(-1)
+	}
 	di.Args = args
 	di.Stderr = os.Stderr
 	di.Stdout = os.Stdout

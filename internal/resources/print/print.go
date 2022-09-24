@@ -12,7 +12,7 @@ const (
 	ERROR
 )
 
-//go:generate ifaces print_iface.go --post Iface
+//go:generate ifaces type print_iface.go --post Iface
 
 // Print handle printing
 type Print struct {

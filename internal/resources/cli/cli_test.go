@@ -22,31 +22,75 @@ var (
 	stderr         = &bytes.Buffer{}
 )
 
-func TestParseArgs_Gen_Manditory(t *testing.T) {
-	cmd := []string{"ifaces"}
+func TestParseArgs_Type_Manditory(t *testing.T) {
+	cmd := []string{"ifaces", "type"}
 	args, err := ParseArgs(cmd[1:], ``, stdout, stderr)
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
+	assert.True(t, args.SubType)
+	assert.Zero(t, len(args.Srcs))
 	assert.Equal(t, commentDefault, args.Cmt)
 	assert.Zero(t, stdout.String())
 	assert.Zero(t, stderr.String())
 }
 
-func TestParseArgs_Gen_Optional(t *testing.T) {
+func TestParseArgs_Type_Optional(t *testing.T) {
 	generatedsrc := filepath.Join(testpaths.TempDir(), pkg, file)
 	pkg = `otherpkg`
-	cmd := []string{"ifaces", generatedsrc, "-p", pkg, "-a", "--pre", pre, "--post", post, "-c", comment, "-m", wild, "--print"}
+	cmd := []string{"ifaces", "-f", "src.go", "type", generatedsrc, "-p", pkg, "-a", "--pre", pre, "--post", post, "-c", comment, "-t", wild, "--no-fdoc", "--no-tdoc", "--print"}
 	args, err := ParseArgs(cmd[1:], ``, stdout, stderr)
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
+	assert.True(t, args.SubType)
+	assert.NotZero(t, len(args.Srcs))
 	assert.True(t, args.Append, `args.Append not set`)
 	assert.Equal(t, pre, args.Pre, `args.Pre incorrect`)
 	assert.Equal(t, post, args.Post, `args.Post incorrect`)
 	assert.Equal(t, comment, args.Cmt, `args.Cmt incorrect`)
-	assert.Equal(t, wild, args.Match, `args.Wild incorrect`)
+	assert.Equal(t, wild, args.MatchType, `args.Wild incorrect`)
 	assert.Equal(t, pkg, args.Pkg, `args.Pkg incorrect`)
+	assert.True(t, args.NoFDoc)
+	assert.True(t, args.NoTDoc)
+	assert.True(t, args.Print, `args.Print not set`)
+	assert.Zero(t, stdout.String())
+	assert.Zero(t, stderr.String())
+}
+
+func TestParseArgs_Recv_Manditory(t *testing.T) {
+	cmd := []string{"ifaces", "recv"}
+	args, err := ParseArgs(cmd[1:], ``, stdout, stderr)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+	assert.True(t, args.SubRecv)
+	assert.Zero(t, len(args.Srcs))
+	assert.Equal(t, commentDefault, args.Cmt)
+	assert.Zero(t, stdout.String())
+	assert.Zero(t, stderr.String())
+}
+
+func TestParseArgs_Recv_Optional(t *testing.T) {
+	generatedsrc := filepath.Join(testpaths.TempDir(), pkg, file)
+	pkg = `otherpkg`
+	// ifaces recv [<out>] [(-f <src>)...] [-a] [-p <pkg>] [-i <iface>] [-t <type>] [-r <func>] [--pre <pre>] [--post <post>] [--no-tdoc] [--no-fdoc] [-c <cmt>] [--print]
+	cmd := []string{"ifaces", "recv", generatedsrc, "-f", "src.go", "-p", pkg, "-a", "-r", "MyFunc", "--pre", pre, "--post", post, "-c", comment, "-t", wild, "--no-fdoc", "--no-tdoc", "--print"}
+	args, err := ParseArgs(cmd[1:], ``, stdout, stderr)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+	assert.True(t, args.SubRecv)
+	assert.NotZero(t, len(args.Srcs))
+	assert.Equal(t, "MyFunc", args.MatchFunc)
+	assert.True(t, args.Append, `args.Append not set`)
+	assert.Equal(t, pre, args.Pre, `args.Pre incorrect`)
+	assert.Equal(t, post, args.Post, `args.Post incorrect`)
+	assert.Equal(t, comment, args.Cmt, `args.Cmt incorrect`)
+	assert.Equal(t, wild, args.MatchType, `args.Wild incorrect`)
+	assert.Equal(t, pkg, args.Pkg, `args.Pkg incorrect`)
+	assert.True(t, args.NoFDoc)
+	assert.True(t, args.NoTDoc)
 	assert.True(t, args.Print, `args.Print not set`)
 	assert.Zero(t, stdout.String())
 	assert.Zero(t, stderr.String())
