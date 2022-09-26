@@ -7,21 +7,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type imp struct {
-	name string
-	path string
-}
-
-func (i imp) Name() string {
-	return i.name
-}
-
-func (i imp) Path() string {
-	return i.path
-}
-
 func TestAddImports(t *testing.T) {
 	src := `package pkg
+
+import (
+	_ "driver/sql"
+	"io"
+)
 
 type MyIO struct {
 }
@@ -37,8 +29,10 @@ func (i MyIO) GetStderr() *os.Stderr {
 	expected := `package pkg
 
 import (
+	_ "driver/sql"
 	"io"
 	"os"
+	driver "src.com/author/sql-driver"
 )
 
 type MyIO struct {
@@ -53,14 +47,9 @@ func (i MyIO) GetStderr() *os.Stderr {
 }
 `
 	imports := []ImportIface{
-		&imp{
-			name: ``,
-			path: `io`,
-		},
-		&imp{
-			name: ``,
-			path: `os`,
-		},
+		NewImport(``, `io`),
+		NewImport(``, `os`),
+		NewImport(`driver`, `src.com/author/sql-driver`),
 	}
 
 	out := &bytes.Buffer{}
