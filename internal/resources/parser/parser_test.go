@@ -93,6 +93,41 @@ func TestParser_GetIfaceMethods(t *testing.T) {
 	assert.Equal(t, `Warnf(format string, a ...any)`, methods[1].Signature())
 }
 
+func TestParser_GetRecvByLine(t *testing.T) {
+	src := `package mypkg
+
+type Type struct {
+}
+
+func (t Type) Func2() {
+}
+
+//` + `go:generate ifaces recv mypkg_faces.go --post Iface
+
+//` + `go:generate ifaces recv mypkg_faces.go --post Iface
+
+func (t Type) Func2() {
+}
+
+func (t Type) Func3() {
+}
+`
+	p, err := Parse(`src.go`, []byte(src))
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+	n := p.GetRecvByLine(9)
+	assert.Nil(t, n)
+
+	r := p.GetRecvByLine(11)
+	if !assert.NotNil(t, r) {
+		t.FailNow()
+	}
+	assert.Equal(t, 13, r.Line())
+	assert.Equal(t, `Func2`, r.Name())
+
+}
+
 func TestParser_GetTypeByLine(t *testing.T) {
 	p, err := Parse(`src.go`, []byte(varSrc()))
 	if err != nil {
@@ -115,7 +150,7 @@ func TestParser_GetTypeRecvs(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	recvs := p.GetTypeRecvs(varStruct1())
+	recvs := p.GetRecvsByType(varStruct1())
 	if assert.Equal(t, 3, len(recvs)) {
 		assert.Regexp(t, `Parse\(.*\)`, recvs[0].Signature())
 		assert.Regexp(t, `Count\(\)`, recvs[1].Signature())

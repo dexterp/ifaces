@@ -21,16 +21,19 @@ var (
 
 func MakeIfaceGen() generator.GeneratorIface {
 	return generator.New(generator.Options{
-		Comment: Args.Cmt,
-		Iface:   Args.Iface,
-		Match:   Args.MatchType,
-		NoFDoc:  Args.NoFDoc,
-		NoTDoc:  Args.NoTDoc,
-		Pkg:     Args.Pkg,
-		Post:    Args.Post,
-		Pre:     Args.Pre,
-		Print:   MakePrint(),
-		Struct:  Args.Struct,
+		Type:      Args.CmdType,
+		Method:    Args.CmdMethod,
+		Comment:   Args.Cmt,
+		Iface:     Args.Iface,
+		MatchType: Args.MatchType,
+		NoFDoc:    Args.NoFDoc,
+		NoTDoc:    Args.NoTDoc,
+		Pkg:       Args.Pkg,
+		Post:      Args.Post,
+		Pre:       Args.Pre,
+		Print:     MakePrint(),
+		Struct:    Args.Struct,
+		TDoc:      Args.TDoc,
 	})
 }
 

@@ -179,8 +179,31 @@ func (p *Parser) GetIfaceMethods(iface string) (methods []*IfaceMethod) {
 	return
 }
 
-// GetTypeRecvs returns all the function interfaces for
-func (p *Parser) GetTypeRecvs(typ string) (recvs []*Recv) {
+// GetRecvByLine
+func (p *Parser) GetRecvByLine(line int) (recv *Recv) {
+	end := p.nextGenCmt(line)
+	for _, r := range p.funcRecvs {
+		if end == 0 && r.Line() >= line {
+			return r
+		} else if r.Line() >= line && r.Line() < end {
+			return r
+		}
+	}
+	return nil
+}
+
+// GetRecvsByPattern returns all receivers by a pattern
+func (p *Parser) GetRecvsByPattern(pattern string) (recvs []*Recv) {
+	for _, recv := range p.funcRecvs {
+		if match.Match(recv.Name(), pattern) && match.Capitalized(recv.Name()) {
+			recvs = append(recvs, recv)
+		}
+	}
+	return
+}
+
+// GetRecvsByType returns all the function interfaces for
+func (p *Parser) GetRecvsByType(typ string) (recvs []*Recv) {
 	for _, recv := range p.funcRecvs {
 		sig := recv.Signature()
 		if recv.TypeName() == typ && match.Capitalized(sig) {
@@ -193,12 +216,7 @@ func (p *Parser) GetTypeRecvs(typ string) (recvs []*Recv) {
 // GetTypeByLine GetTypeByLine returns the type at or after line. returns nil if the end of
 // file is reached or it encounters a iface generator comment.
 func (p Parser) GetTypeByLine(line int) *Type {
-	var end int
-	for _, c := range p.genCmts {
-		if c.Line > line {
-			end = c.Line
-		}
-	}
+	end := p.nextGenCmt(line)
 	for _, t := range p.typeDelcs {
 		if end == 0 && t.Line() >= line {
 			return t
@@ -239,10 +257,20 @@ func (p Parser) Package() string {
 	return p.astFile.Name.String()
 }
 
+// GetTypeByName fetch a type by its name
+func (p Parser) GetTypeByName(name string) *Type {
+	for _, t := range p.typeDelcs {
+		if t.Name() == name {
+			return t
+		}
+	}
+	return nil
+}
+
 // GetTypeByPattern use pattern to match types and return a list of type declarations
 func (p Parser) GetTypeByPattern(pattern string) (ts []*Type) {
 	for _, t := range p.typeDelcs {
-		if match.Match(t.Name(), pattern) {
+		if match.Match(t.Name(), pattern) && match.Capitalized(t.Name()) {
 			ts = append(ts, t)
 		}
 	}
@@ -257,6 +285,17 @@ func (p *Parser) GetTypesByType(typ int) (ts []*Type) {
 		}
 	}
 	return ts
+}
+
+// nextGenCmt finds the next go:generate comment after line. Returns 0 if not
+// found
+func (p Parser) nextGenCmt(line int) (end int) {
+	for _, c := range p.genCmts {
+		if c.Line > line {
+			end = c.Line
+		}
+	}
+	return
 }
 
 // GeneratorCmt

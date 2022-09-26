@@ -31,7 +31,7 @@ func (m MyStruct) Get() (item string) {
 func (m *MyStruct) Set(item string) {
 }
 
-//` + `go:generate ifaces /tmp/test_ifaces.go -a
+//` + `go:generate ifaces /tmp/test_ifaces.go
 
 // SomeStruct type document
 type SomeStruct struct {
@@ -46,7 +46,7 @@ func (m *SomeStruct) Add(d ...any) {
 }
 
 // Collate collate data
-func (m *SomeStruct) Colloate(in []*Data) error {
+func (m *SomeStruct) Collate(in []*Data) error {
 	return nil
 }
 
@@ -102,20 +102,45 @@ func (m *IgnoreStruct) Connect(connetstr string) {
 type Data struct {
 }
 `
-	pre     = `Pre`
-	post    = `Post`
-	comment = `DO NOT EDIT`
-	pkg     = `mypkg`
-	wild    = `My*`
+	src2 = `package originpkg
+
+type Service struct {
+}
+
+func (s Service) Download(wrtr io.Writer) error {
+	return nil
+}
+
+//` + `go:generate ifaces recv service_ifaces.go --post Iface
+
+func (s *Service) Upload(rdr io.Reader) error {
+	return nil
+}
+
+func (s *Service) Shutdown() error {
+}
+
+//` + `go:generate ifaces recv service_ifaces.go --post Iface
+
+func (s *Service) Status() int {
+}
+
+`
+	pre       = `Pre`
+	post      = `Post`
+	comment   = `DO NOT EDIT`
+	pkg       = `mypkg`
+	matchType = `My*`
 )
 
 func TestGenerator_Generate(t *testing.T) {
 	gen := New(Options{
-		Pre:     pre,
-		Post:    post,
-		Comment: comment,
-		Pkg:     pkg,
-		Match:   wild,
+		Type:      true,
+		Pre:       pre,
+		Post:      post,
+		Comment:   comment,
+		Pkg:       pkg,
+		MatchType: matchType,
 	})
 	outfile := "src1.go"
 	srcs := []*Src{
@@ -144,14 +169,14 @@ type PreMyStructPost interface {
 	fmt.Println(out.String())
 }
 
-func TestGenerator_Gen_Struct(t *testing.T) {
+func TestGenerator_Type_Struct(t *testing.T) {
 	gen := New(Options{
+		Type:    true,
 		Comment: comment,
 		Pkg:     pkg,
 		Post:    post,
 		Pre:     pre,
 		Struct:  true,
-		Match:   wild,
 	})
 	outfile := `test_ifaces.go`
 	srcs := []*Src{
@@ -187,7 +212,7 @@ type PreSomeStructPost interface {
 	// Add add data
 	Add(d ...any)
 	// Collate collate data
-	Colloate(in []*originpkg.Data) error
+	Collate(in []*originpkg.Data) error
 	// Scan scan func document
 	Scan(in io.Reader) error
 	// ScanMap scan map func
@@ -216,14 +241,15 @@ type PreIgnoreStructPost interface {
 	fmt.Println(out.String())
 }
 
-func TestGenerator_Gen_NoTypeDoc(t *testing.T) {
+func TestGenerator_Type_Match_NoTypeDoc(t *testing.T) {
 	gen := New(Options{
-		NoTDoc:  true,
-		Pre:     pre,
-		Post:    post,
-		Comment: comment,
-		Pkg:     pkg,
-		Match:   wild,
+		Type:      true,
+		NoTDoc:    true,
+		Pre:       pre,
+		Post:      post,
+		Comment:   comment,
+		Pkg:       pkg,
+		MatchType: matchType,
 	})
 	outfile := `test_ifaces.go`
 	srcs := []*Src{
@@ -250,14 +276,15 @@ type PreMyStructPost interface {
 	assert.Equal(t, expected, out.String())
 }
 
-func TestGenerator_Gen_NoFuncDoc(t *testing.T) {
+func TestGenerator_Type_Match_NoFuncDoc(t *testing.T) {
 	gen := New(Options{
-		NoFDoc:  true,
-		Pre:     pre,
-		Post:    post,
-		Comment: comment,
-		Pkg:     pkg,
-		Match:   wild,
+		Type:      true,
+		NoFDoc:    true,
+		Pre:       pre,
+		Post:      post,
+		Comment:   comment,
+		Pkg:       pkg,
+		MatchType: matchType,
 	})
 	outfile := `test_ifaces.go`
 	srcs := []*Src{
@@ -283,8 +310,9 @@ type PreMyStructPost interface {
 	assert.Equal(t, expected, out.String())
 }
 
-func TestGenerator_Gen_Entry(t *testing.T) {
+func TestGenerator_Type_Entry(t *testing.T) {
 	gen := New(Options{
+		Type:    true,
 		Pre:     pre,
 		Post:    post,
 		Comment: comment,
@@ -326,7 +354,7 @@ type PreSomeStructPost interface {
 	// Add add data
 	Add(d ...any)
 	// Collate collate data
-	Colloate(in []*originpkg.Data) error
+	Collate(in []*originpkg.Data) error
 	// Scan scan func document
 	Scan(in io.Reader) error
 	// ScanMap scan map func
@@ -361,8 +389,9 @@ type PreSomeStructPost interface {
 	assert.Equal(t, expected, out.String())
 }
 
-func TestGenerator_Gen_Entry_NoTypeDoc(t *testing.T) {
+func TestGenerator_Type_Entry_NoTypeDoc(t *testing.T) {
 	gen := New(Options{
+		Type:    true,
 		NoTDoc:  true,
 		Pre:     pre,
 		Post:    post,
@@ -392,6 +421,7 @@ import (
 	"os"
 )
 
+// Iface
 type Iface interface {
 	SetStderr(stderr *os.Stderr)
 }
@@ -402,7 +432,7 @@ type PreSomeStructPost interface {
 	// Add add data
 	Add(d ...any)
 	// Collate collate data
-	Colloate(in []*originpkg.Data) error
+	Collate(in []*originpkg.Data) error
 	// Scan scan func document
 	Scan(in io.Reader) error
 	// ScanMap scan map func
@@ -437,8 +467,9 @@ type PreSomeStructPost interface {
 	assert.Equal(t, expected, out.String())
 }
 
-func TestGenerator_Gen_Entry_NoFuncDoc(t *testing.T) {
+func TestGenerator_Type_Entry_NoFuncDoc(t *testing.T) {
 	gen := New(Options{
+		Type:    true,
 		NoFDoc:  true,
 		Pre:     pre,
 		Post:    post,
@@ -478,7 +509,7 @@ type Iface interface {
 type PreSomeStructPost interface {
 	AddData(d ...originpkg.Data)
 	Add(d ...any)
-	Colloate(in []*originpkg.Data) error
+	Collate(in []*originpkg.Data) error
 	Scan(in io.Reader) error
 	ScanMap(in map[string]string) error
 	ScanMapMap(in map[string]map[string]string) error
@@ -501,6 +532,72 @@ type PreSomeStructPost interface {
 	out := &bytes.Buffer{}
 	in.WriteString(curSrc)
 	err := gen.Generate(srcs, in, "test_ifaces.go", out)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, out.String())
+}
+
+func TestGenerator_Recv(t *testing.T) {
+	gen := New(Options{
+		Comment: comment,
+		Pkg:     pkg,
+		Post:    `Iface`,
+		Method:  true,
+	})
+	srcfile := `test_ifaces.go`
+	srcs := []*Src{
+		{
+			File: srcfile,
+			Line: 10,
+			Src:  src2,
+		},
+	}
+	expected := `// DO NOT EDIT
+
+package mypkg
+
+import "io"
+
+type ServiceIface interface {
+	Upload(rdr io.Reader) error
+}
+`
+	in := &bytes.Buffer{}
+	out := &bytes.Buffer{}
+	err := gen.Generate(srcs, in, srcfile, out)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, out.String())
+
+	gen = New(Options{
+		Comment: comment,
+		Pkg:     pkg,
+		Post:    `Iface`,
+		Method:  true,
+	})
+	srcfile = `test_ifaces.go`
+	srcs = []*Src{
+		{
+			File: srcfile,
+			Src:  src2,
+			Line: 19,
+		},
+	}
+	current := expected
+	expected = `// DO NOT EDIT
+
+package mypkg
+
+import "io"
+
+type ServiceIface interface {
+	Upload(rdr io.Reader) error
+	Status() int
+}
+`
+
+	in = &bytes.Buffer{}
+	out = &bytes.Buffer{}
+	in.WriteString(current)
+	err = gen.Generate(srcs, in, srcfile, out)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, out.String())
 }
