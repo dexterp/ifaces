@@ -47,17 +47,6 @@ func (t TData) Get(iface string) *Interface {
 	return nil
 }
 
-func (t *TData) AddOrGet(iface *Interface) (*Interface, error) {
-	err := t.Add(iface)
-	if err != nil {
-		if err == ErrorDuplicateInterface {
-			return t.Get(iface.Type.name), nil
-		}
-		return nil, err
-	}
-	return iface, nil
-}
-
 type Interface struct {
 	Type    *Type     // TypeDecl type declaration
 	Methods []*Method // Methods list of methods
