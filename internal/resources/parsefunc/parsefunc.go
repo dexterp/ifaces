@@ -11,7 +11,7 @@ var (
 	regexSignature    = regexp.MustCompile(`^(?P<name>[A-Za-z][A-Za-z0-9_]+)(?:\[(?P<generics>[^\]]*)\])?\((?P<params>[^\)]+)?\)\s*\(?(?P<return>[^(?:$|\)]*)\)?`)
 	regexTypeString   = `[A-Za-z][A-Za-z0-9]*`
 	regexType         = regexp.MustCompile(`^(\.\.\.)?(\*)?(` + `(?:[a-z]+\.)?` + regexTypeString + `(?:\{\})?)$`)
-	regexTypeMapOrGen = regexp.MustCompile(`^(` + regexTypeString + `)\[(\*?)(` + regexTypeString + `)\](.*)$`)
+	regexTypeMapOrGen = regexp.MustCompile(`^(` + regexTypeString + `)\[((?:\*?)` + regexTypeString + `)\](.*)$`)
 	regexTypeSlice    = regexp.MustCompile(`^(\*)?\[\](.*)$`)
 )
 
@@ -125,7 +125,7 @@ func parseTyp(pkg string, hastype hasType, t string) *typ {
 	if mtch == nil {
 		return nil
 	}
-	if mtch[2] == `interface{}` {
+	if mtch[3] == `interface{}` {
 		return &typ{
 			iface: true,
 		}
@@ -148,11 +148,10 @@ func parseTypMap(pkg string, hastype hasType, m string) *typMap {
 		return nil
 	}
 	return &typMap{
-		ptr:      mtch[2],
-		key:      mtch[3],
-		elmType:  parseTyp(pkg, hastype, mtch[4]),
-		elmMap:   parseTypMap(pkg, hastype, mtch[4]),
-		elmSlice: parseTypSlice(pkg, hastype, mtch[4]),
+		key:      parseTyp(pkg, hastype, mtch[2]),
+		elmType:  parseTyp(pkg, hastype, mtch[3]),
+		elmMap:   parseTypMap(pkg, hastype, mtch[3]),
+		elmSlice: parseTypSlice(pkg, hastype, mtch[3]),
 	}
 }
 
@@ -316,8 +315,7 @@ func (t typ) string() string {
 }
 
 type typMap struct {
-	ptr      string
-	key      string
+	key      *typ
 	elmType  *typ
 	elmMap   *typMap
 	elmSlice *typSlice
@@ -325,7 +323,7 @@ type typMap struct {
 
 func (tm typMap) string() string {
 	buf := &bytes.Buffer{}
-	buf.WriteString(`map[` + tm.ptr + tm.key + `]`)
+	buf.WriteString(`map[` + tm.key.string() + `]`)
 	switch {
 	case tm.elmType != nil:
 		buf.WriteString(tm.elmType.string())
