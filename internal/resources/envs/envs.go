@@ -16,3 +16,7 @@ func Goline() int {
 	}
 	return l
 }
+
+func Gopath() string {
+	return os.Getenv("GOPATH")
+}

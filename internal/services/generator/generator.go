@@ -358,7 +358,7 @@ func getImports(parsedImports []*parser.Import, path string) (imports []addimpor
 	for _, i := range parsedImports {
 		imports = append(imports, i)
 	}
-	importPath, err := modinfo.GetImport(nil, ``, path)
+	importPath, err := modinfo.GetImport(``, nil, path)
 	if importPath != `` && err != nil {
 		ip := addimports.NewImport(``, importPath)
 		imports = append(imports, ip)
