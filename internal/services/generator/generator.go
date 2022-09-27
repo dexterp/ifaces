@@ -23,24 +23,6 @@ import (
 
 // Generator interface generator
 type Generator struct {
-	typ       bool
-	method    bool
-	comment   string
-	iface     string
-	noFDoc    bool
-	noTDoc    bool
-	pkg       string
-	post      string
-	pre       string
-	print     print.PrintIface
-	struc     bool
-	tdoc      string
-	matchType string
-	matchFunc string
-}
-
-// Options
-type Options struct {
 	Type      bool             // Type type subcommand
 	Method    bool             // Method method sub command
 	Comment   string           // Comment comment at the top of the file
@@ -57,26 +39,6 @@ type Options struct {
 	MatchFunc string           // MatchFunc match receivers
 }
 
-// New generate IfaceGen
-func New(opts Options) *Generator {
-	return &Generator{
-		typ:       opts.Type,
-		method:    opts.Method,
-		comment:   opts.Comment,
-		iface:     opts.Iface,
-		noFDoc:    opts.NoFDoc,
-		noTDoc:    opts.NoTDoc,
-		pkg:       opts.Pkg,
-		post:      opts.Post,
-		pre:       opts.Pre,
-		print:     opts.Print,
-		struc:     opts.Struct,
-		tdoc:      opts.TDoc,
-		matchType: opts.MatchType,
-		matchFunc: opts.MatchFunc,
-	}
-}
-
 //go:embed generate.gotmpl
 var gentmpl string
 
@@ -84,7 +46,7 @@ var ErrorNoSourceFile = errors.New(`no source files processed`)
 
 // Generate generate interfaces source code for the gen sub command.
 func (g Generator) Generate(srcs []*Src, current *bytes.Buffer, outfile string, output io.Writer) error {
-	pkg, err := pckage(g.pkg, outfile)
+	pkg, err := pckage(g.Pkg, outfile)
 	if err != nil {
 		return err
 	}
@@ -117,12 +79,12 @@ func (g Generator) Generate(srcs []*Src, current *bytes.Buffer, outfile string, 
 
 func (g Generator) parse(srcs []*Src, current *bytes.Buffer, outfile string, pkg string) (data *tdata.TData, importsList []addimports.ImportIface, err error) {
 	data = &tdata.TData{
-		Comment: g.comment,
-		NoFDoc:  g.noFDoc,
-		NoTDoc:  g.noTDoc,
+		Comment: g.Comment,
+		NoFDoc:  g.NoFDoc,
+		NoTDoc:  g.NoTDoc,
 		Pkg:     pkg,
-		Post:    g.post,
-		Pre:     g.pre,
+		Post:    g.Post,
+		Pre:     g.Pre,
 	}
 	err = g.parseTargetSrc(data, &importsList, outfile, current)
 	if err != nil {
@@ -145,7 +107,7 @@ func (g Generator) parseSrc(data *tdata.TData, importsList *[]addimports.ImportI
 			if errors.Unwrap(err) != nil {
 				err = errors.Unwrap(err)
 			}
-			g.print.Warnf("skipping \"%s\": %s\n", pth, err.Error())
+			g.Print.Warnf("skipping \"%s\": %s\n", pth, err.Error())
 			continue
 		}
 		foundFile = true
@@ -180,7 +142,7 @@ func (g Generator) parseTargetSrc(data *tdata.TData, importsList *[]addimports.I
 	for _, typ := range p.GetTypesByType(types.INTERFACE) {
 		iface, finish := makeInterface(data, typ.Name(), typ.Doc(), false)
 		methods := p.GetIfaceMethods(typ.Name())
-		err = addIfaceMethods(iface, methods, g.noFDoc)
+		err = addIfaceMethods(iface, methods, g.NoFDoc)
 		if err != nil {
 			return err
 		}
@@ -193,26 +155,26 @@ func (g Generator) parseTargetSrc(data *tdata.TData, importsList *[]addimports.I
 }
 
 func (g Generator) populateTypeInterfaces(data *tdata.TData, src *Src, p *parser.Parser) (err error) {
-	if !g.typ {
+	if !g.Type {
 		return
 	}
 	var name string
-	ifaceDefined := g.iface != ``
+	ifaceDefined := g.Iface != ``
 	if ifaceDefined {
-		name = g.pre + g.iface + g.post
+		name = g.Pre + g.Iface + g.Post
 	}
 	types := g.getTypeList(p, src)
 	for _, typ := range types {
 		if !ifaceDefined {
-			name = g.pre + typ.Name() + g.post
+			name = g.Pre + typ.Name() + g.Post
 		}
-		doc := g.tdoc
+		doc := g.TDoc
 		if doc == `` {
 			doc = typ.Doc()
 		}
-		iface, finish := makeInterface(data, name, doc, g.noTDoc)
+		iface, finish := makeInterface(data, name, doc, g.NoTDoc)
 		recvs := p.GetRecvsByType(typ.Name())
-		err = addRecvMethods(iface, recvs, p.Package(), data.Pkg, g.noFDoc)
+		err = addRecvMethods(iface, recvs, p.Package(), data.Pkg, g.NoFDoc)
 		if err != nil {
 			return err
 		}
@@ -228,26 +190,26 @@ func (g Generator) populateTypeInterfaces(data *tdata.TData, src *Src, p *parser
 }
 
 func (g Generator) populateRecvInterfaces(data *tdata.TData, src *Src, p *parser.Parser) (err error) {
-	if !g.method {
+	if !g.Method {
 		return
 	}
 	var name string
-	ifaceDefined := g.iface != ``
+	ifaceDefined := g.Iface != ``
 	if ifaceDefined {
-		name = g.pre + g.iface + g.post
+		name = g.Pre + g.Iface + g.Post
 	}
 	recvs := g.getRecvList(p, src)
 	for _, recv := range recvs {
 		typ := p.GetTypeByName(recv.TypeName())
 		if !ifaceDefined {
-			name = g.pre + typ.Name() + g.post
+			name = g.Pre + typ.Name() + g.Post
 		}
-		doc := g.tdoc
+		doc := g.TDoc
 		if doc == `` {
-			doc = g.tdoc
+			doc = g.TDoc
 		}
-		iface, finish := makeInterface(data, name, doc, g.noTDoc)
-		m := tdata.NewMethod(recv.Name(), recv.Signature(), recv.Doc(), g.noFDoc)
+		iface, finish := makeInterface(data, name, doc, g.NoTDoc)
+		m := tdata.NewMethod(recv.Name(), recv.Signature(), recv.Doc(), g.NoFDoc)
 		err := iface.Add(m)
 		if err != nil && err != tdata.ErrorDuplicateMethod {
 			return err
@@ -261,11 +223,11 @@ func (g Generator) populateRecvInterfaces(data *tdata.TData, src *Src, p *parser
 }
 
 func (g Generator) getRecvList(p *parser.Parser, src *Src) (r []*parser.Recv) {
-	if g.matchFunc != `` {
-		recvs := p.GetRecvsByPattern(g.matchFunc)
-		if g.matchType != `` {
+	if g.MatchFunc != `` {
+		recvs := p.GetRecvsByPattern(g.MatchFunc)
+		if g.MatchType != `` {
 			for _, recv := range recvs {
-				if match.Match(recv.TypeName(), g.matchType) && match.Capitalized(recv.TypeName()) {
+				if match.Match(recv.TypeName(), g.MatchType) && match.Capitalized(recv.TypeName()) {
 					r = append(r, recv)
 				}
 			}
@@ -285,11 +247,11 @@ func (g Generator) getRecvList(p *parser.Parser, src *Src) (r []*parser.Recv) {
 
 func (g Generator) getTypeList(p *parser.Parser, src *Src) (t []*parser.Type) {
 	line := src.Line
-	if g.struc {
+	if g.Struct {
 		t = append(t, p.GetTypesByType(types.STRUCT)...)
 	}
-	if g.matchType != `` {
-		t = append(t, p.GetTypeByPattern(g.matchType)...)
+	if g.MatchType != `` {
+		t = append(t, p.GetTypeByPattern(g.MatchType)...)
 	}
 	if len(t) == 0 && line > 0 {
 		typ := p.GetTypeByLine(line)

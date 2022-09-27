@@ -14,10 +14,13 @@ import (
 var ErrNotFound = errors.New(`module not found`)
 var ErrLatestNotSupported = errors.New(`@latest version currently not supported`)
 
+// ModInfo parsed go.mod file.
 type ModInfo struct {
 	modfile *modfile.File
 }
 
+// Load Load a go.mod file. If data is not nil then the data is parsed as the
+// contents of the go.mod file, otherwise it opens and parses file.
 func Load(file string, data []byte) (*ModInfo, error) {
 	f, err := modfile.Parse(file, data, nil)
 	if err != nil {
@@ -28,6 +31,7 @@ func Load(file string, data []byte) (*ModInfo, error) {
 	}, nil
 }
 
+// LoadFromParents scans the parent directories of srcpath for go.mod and loads.
 func LoadFromParents(srcpath string) (*ModInfo, error) {
 	modpath, err := findMod(srcpath)
 	if err != nil {
@@ -40,9 +44,10 @@ func LoadFromParents(srcpath string) (*ModInfo, error) {
 	return Load(modpath, mod)
 }
 
-func (m ModInfo) GetVersion(module string) (ver string, err error) {
+// GetVersion returns the version of a required module
+func (m ModInfo) GetVersion(requiredModule string) (ver string, err error) {
 	for _, r := range m.modfile.Require {
-		if match.Match(r.Mod.Path, module) {
+		if match.Match(r.Mod.Path, requiredModule) {
 			return r.Mod.Version, nil
 		}
 	}

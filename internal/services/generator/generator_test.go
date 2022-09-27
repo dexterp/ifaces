@@ -134,14 +134,14 @@ func (s *Service) Status() int {
 )
 
 func TestGenerator_Generate(t *testing.T) {
-	gen := New(Options{
+	gen := &Generator{
 		Type:      true,
 		Pre:       pre,
 		Post:      post,
 		Comment:   comment,
 		Pkg:       pkg,
 		MatchType: matchType,
-	})
+	}
 	outfile := "src1.go"
 	srcs := []*Src{
 		{
@@ -170,14 +170,14 @@ type PreMyStructPost interface {
 }
 
 func TestGenerator_Type_Struct(t *testing.T) {
-	gen := New(Options{
+	gen := &Generator{
 		Type:    true,
 		Comment: comment,
 		Pkg:     pkg,
 		Post:    post,
 		Pre:     pre,
 		Struct:  true,
-	})
+	}
 	outfile := `test_ifaces.go`
 	srcs := []*Src{
 		{
@@ -242,7 +242,7 @@ type PreIgnoreStructPost interface {
 }
 
 func TestGenerator_Type_Match_NoTypeDoc(t *testing.T) {
-	gen := New(Options{
+	gen := &Generator{
 		Type:      true,
 		NoTDoc:    true,
 		Pre:       pre,
@@ -250,7 +250,7 @@ func TestGenerator_Type_Match_NoTypeDoc(t *testing.T) {
 		Comment:   comment,
 		Pkg:       pkg,
 		MatchType: matchType,
-	})
+	}
 	outfile := `test_ifaces.go`
 	srcs := []*Src{
 		{
@@ -277,7 +277,7 @@ type PreMyStructPost interface {
 }
 
 func TestGenerator_Type_Match_NoFuncDoc(t *testing.T) {
-	gen := New(Options{
+	gen := &Generator{
 		Type:      true,
 		NoFDoc:    true,
 		Pre:       pre,
@@ -285,7 +285,7 @@ func TestGenerator_Type_Match_NoFuncDoc(t *testing.T) {
 		Comment:   comment,
 		Pkg:       pkg,
 		MatchType: matchType,
-	})
+	}
 	outfile := `test_ifaces.go`
 	srcs := []*Src{
 		{
@@ -311,13 +311,13 @@ type PreMyStructPost interface {
 }
 
 func TestGenerator_Type_Entry(t *testing.T) {
-	gen := New(Options{
+	gen := Generator{
 		Type:    true,
 		Pre:     pre,
 		Post:    post,
 		Comment: comment,
 		Pkg:     pkg,
-	})
+	}
 
 	curSrc := fmt.Sprintf(`// DO NOT EDIT
 
@@ -390,14 +390,14 @@ type PreSomeStructPost interface {
 }
 
 func TestGenerator_Type_Entry_NoTypeDoc(t *testing.T) {
-	gen := New(Options{
+	gen := &Generator{
 		Type:    true,
 		NoTDoc:  true,
 		Pre:     pre,
 		Post:    post,
 		Comment: comment,
 		Pkg:     pkg,
-	})
+	}
 
 	curSrc := fmt.Sprintf(`// DO NOT EDIT
 
@@ -468,14 +468,14 @@ type PreSomeStructPost interface {
 }
 
 func TestGenerator_Type_Entry_NoFuncDoc(t *testing.T) {
-	gen := New(Options{
+	gen := &Generator{
 		Type:    true,
 		NoFDoc:  true,
 		Pre:     pre,
 		Post:    post,
 		Comment: comment,
 		Pkg:     pkg,
-	})
+	}
 
 	curSrc := fmt.Sprintf(`// DO NOT EDIT
 
@@ -537,12 +537,12 @@ type PreSomeStructPost interface {
 }
 
 func TestGenerator_Recv(t *testing.T) {
-	gen := New(Options{
+	gen := &Generator{
 		Comment: comment,
 		Pkg:     pkg,
 		Post:    `Iface`,
 		Method:  true,
-	})
+	}
 	srcfile := `test_ifaces.go`
 	srcs := []*Src{
 		{
@@ -567,12 +567,12 @@ type ServiceIface interface {
 	assert.NoError(t, err)
 	assert.Equal(t, expected, out.String())
 
-	gen = New(Options{
+	gen = &Generator{
 		Comment: comment,
 		Pkg:     pkg,
 		Post:    `Iface`,
 		Method:  true,
-	})
+	}
 	srcfile = `test_ifaces.go`
 	srcs = []*Src{
 		{

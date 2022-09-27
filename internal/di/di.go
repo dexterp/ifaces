@@ -20,7 +20,7 @@ var (
 )
 
 func MakeIfaceGen() generator.GeneratorIface {
-	return generator.New(generator.Options{
+	return &generator.Generator{
 		Type:      Args.CmdType,
 		Method:    Args.CmdMethod,
 		Comment:   Args.Cmt,
@@ -34,7 +34,7 @@ func MakeIfaceGen() generator.GeneratorIface {
 		Print:     MakePrint(),
 		Struct:    Args.Struct,
 		TDoc:      Args.TDoc,
-	})
+	}
 }
 
 //
