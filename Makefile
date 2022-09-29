@@ -93,15 +93,6 @@ _cx:
 	@gocyclo -avg $(GODIRS) | grep -v _test.go | tee reports/cyclomaticcomplexity.txt
 	@contents=$$(cat reports/cyclomaticcomplexity.txt); echo "<html><title>cyclomatic complexity</title><body><pre>$${contents}</pre></body><html>" > reports/html/cyclomaticcomplexity.html
 
-.PHONY: _package
-_package: ## Create an RPM, Deb, Homebrew package
-	@XCOMPILE=true make build
-	@VERSION=$(VERSION) envsubst < nfpm.yaml.in > nfpm.yaml
-	$(MAKE) dist/$(NAME)-$(VERSION).rb
-	$(MAKE) tmp/$(NAME).rb
-	$(MAKE) dist/$(NAME)-$(VERSION).$(ARCH).rpm
-	$(MAKE) dist/$(NAME)_$(VERSION)_$(GOARCH).deb
-
 .PHONY: interfaces
 interfaces: ## Generate interfaces
 	cat ifacemaker.txt | egrep -v '^#' | xargs -n5 bash -c 'ifacemaker -f $$0 -s $$1 -p $$2 -i $$3 -o $$4 -c "DO NOT EDIT: Generated using \"make interfaces\""'
@@ -117,16 +108,6 @@ _release: ## Trigger a release by creating a tag and pushing to the upstream rep
 	@$(MAKE) _isreleased 2> /dev/null
 	git tag v$(VERSION)
 	git push --tags
-
-# To be run inside a github workflow
-.PHONY: _release_github
-_release_github: _package
-	gh release create v$(VERSION)
-	gh release upload v$(VERSION) dist/$(NAME)-$(VERSION).tar.gz
-	gh release upload v$(VERSION) dist/$(NAME).rb
-	gh release upload v$(VERSION) dist/$(NAME)-$(VERSION).rb
-	gh release upload v$(VERSION) dist/$(NAME)-$(VERSION).x86_64.rpm
-	gh release upload v$(VERSION) dist/$(NAME)_$(VERSION)_amd64.deb
 
 .PHONY: lint
 lint: internal/resources/version/version.go
@@ -211,34 +192,8 @@ dist/$(NAME)_$(GOOS)_$(GOARCH)/$(NAME) dist/$(NAME)_$(GOOS)_$(GOARCH)/$(NAME).ex
 	@mkdir -p $$(dirname $@)
 	go build -o $@ ./cmd/$(NAME)
 
-dist/$(NAME)-$(VERSION).$(ARCH).rpm: dist/$(NAME)_$(GOOS)_$(GOARCH)/$(NAME)
-	@mkdir -p $$(dirname $@)
-	@$(MAKE) nfpm.yaml
-	nfpm pkg --packager rpm --target dist/
-
-dist/$(NAME)_$(VERSION)_$(GOARCH).deb: dist/$(NAME)_$(GOOS)_$(GOARCH)/$(NAME)
-	@mkdir -p $$(dirname $@)
-	@$(MAKE) nfpm.yaml
-	nfpm pkg --packager deb --target dist/
-
 internal/resources/version/version.go: internal/resources/version/version.go.in VERSION
 	@VERSION=$(VERSION) $(DOTENV) envsubst < $< > $@
-
-dist/$(NAME)-$(VERSION).rb: dist/$(NAME).rb
-	@cp dist/$(NAME){,-$(VERSION)}.rb
-
-dist/$(NAME).rb: $(NAME).rb.in dist/$(NAME)-$(VERSION).tar.gz
-	@BASEURL="https://github.com/kick-project/$(NAME)/archive" VERSION=$(VERSION) SHA256=$$(sha256sum dist/$(NAME)-$(VERSION).tar.gz | awk '{print $$1}') $(DOTENV) envsubst < $< > $@
-
-tmp/$(NAME).rb: $(NAME).rb.in dist/$(NAME)-$(VERSION).tar.gz
-	@mkdir -p tmp
-	@BASEURL="file://$(PWD)/dist" VERSION=$(VERSION) SHA256=$$(sha256sum dist/$(NAME)-$(VERSION).tar.gz | awk '{print $$1}') $(DOTENV) envsubst < $< > $@
-
-nfpm.yaml: nfpm.yaml.in VERSION
-	@VERSION=$(VERSION) $(DOTENV) envsubst < $< > $@
-
-dist/$(NAME)-$(VERSION).tar.gz: $(GOFILES)
-	tar -zcf dist/$(NAME)-$(VERSION).tar.gz $$(find . \( -path ./test -prune -o -path ./tmp \) -prune -false -o \( -name go.mod -o -name go.sum -o -name \*.go \))
 
 #
 # make wrapper - Execute any target target prefixed with a underscore.
