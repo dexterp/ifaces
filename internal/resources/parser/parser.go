@@ -17,7 +17,6 @@ import (
 type Parser struct {
 	astFile          *ast.File
 	fset             *token.FileSet
-	path             string
 	comments         []*Comment
 	ReceiverMethods  *[]MethodIface
 	InterfaceMethods *[]MethodIface
@@ -37,7 +36,6 @@ func Parse(path string, src any) (*Parser, error) {
 		return nil, err
 	}
 	p := &Parser{
-		path:             path,
 		fset:             fset,
 		astFile:          node,
 		comments:         []*Comment{},
