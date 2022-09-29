@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/dexterp/ifaces/internal/resources/typecheck"
 )
 
 var (
@@ -15,7 +17,7 @@ var (
 	regexTypeSlice    = regexp.MustCompile(`^(\*)?\[\](.*)$`)
 )
 
-func ToFuncDecl(pkg string, has hasType, method string) *FuncDecl {
+func ToFuncDecl(pkg string, has typecheck.HasType, method string) *FuncDecl {
 	name, typeParams, params, returns := parseFuncDecl(method)
 	decl := &FuncDecl{
 		name:       name,
@@ -34,7 +36,7 @@ func parseFuncDecl(sig string) (name, generics, params, ret string) {
 	return mtchs[1], mtchs[2], mtchs[3], mtchs[4]
 }
 
-func parseParams(pkg string, has hasType, paramsstr string) (params []*param) {
+func parseParams(pkg string, has typecheck.HasType, paramsstr string) (params []*param) {
 	var (
 		paramsList [][]string
 		maxlen     int
@@ -83,7 +85,7 @@ func parseParams(pkg string, has hasType, paramsstr string) (params []*param) {
 	return params
 }
 
-func parseTypeParams(pkg string, hastype hasType, gen string) (generics []*typeParams) {
+func parseTypeParams(pkg string, hastype typecheck.HasType, gen string) (generics []*typeParams) {
 	if gen == `` {
 		return generics
 	}
@@ -120,7 +122,7 @@ func parseTypeParams(pkg string, hastype hasType, gen string) (generics []*typeP
 	return generics
 }
 
-func parseTyp(pkg string, hastype hasType, t string) *typ {
+func parseTyp(pkg string, hastype typecheck.HasType, t string) *typ {
 	mtch := regexType.FindStringSubmatch(t)
 	if mtch == nil {
 		return nil
@@ -139,7 +141,7 @@ func parseTyp(pkg string, hastype hasType, t string) *typ {
 	}
 }
 
-func parseTypMap(pkg string, hastype hasType, m string) *typMap {
+func parseTypMap(pkg string, hastype typecheck.HasType, m string) *typMap {
 	mtch := regexTypeMapOrGen.FindStringSubmatch(m)
 	if mtch == nil {
 		return nil
@@ -155,7 +157,7 @@ func parseTypMap(pkg string, hastype hasType, m string) *typMap {
 	}
 }
 
-func parseTypSlice(pkg string, hastype hasType, s string) *typSlice {
+func parseTypSlice(pkg string, hastype typecheck.HasType, s string) *typSlice {
 	mtch := regexTypeSlice.FindStringSubmatch(s)
 	if mtch == nil {
 		return nil
@@ -236,7 +238,7 @@ func (f FuncDecl) stringReturns() string {
 }
 
 type param struct {
-	hastype  hasType
+	hastype  typecheck.HasType
 	pkg      string
 	name     string
 	typ      *typ
@@ -272,7 +274,7 @@ func (p param) Type() string {
 
 type typeParams struct {
 	pkg     string
-	hastype hasType
+	hastype typecheck.HasType
 	name    string
 	typ     []*typ
 }
@@ -291,13 +293,9 @@ func (g typeParams) String() string {
 	return g.name + ` ` + strings.Join(g.Types(), ` | `)
 }
 
-type hasType interface {
-	HasType(typ string) bool
-}
-
 type typ struct {
 	pkg      string // original package name
-	hastype  hasType
+	hastype  typecheck.HasType
 	variadic string // variadic paramater
 	ptr      string // asterisk or empty
 	typ      string // type name
@@ -308,7 +306,7 @@ func (t typ) string() string {
 	if t.iface {
 		return `interface{}`
 	}
-	if t.pkg != `` && !strings.Contains(t.typ, `.`) && t.hastype.HasType(t.typ) {
+	if t.pkg != `` && !strings.Contains(t.typ, `.`) && t.hastype(t.typ) {
 		return t.variadic + t.ptr + t.pkg + `.` + t.typ
 	}
 	return t.variadic + t.ptr + t.typ

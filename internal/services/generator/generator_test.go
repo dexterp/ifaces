@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/dexterp/ifaces/internal/resources/print"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,12 +24,12 @@ type MyStruct struct {
 }
 
 // Get func doc
-func (m MyStruct) Get() (item string) {
-	return ""
+func (m MyStruct) Get() (item Data) {
+	return nil
 }
 
 // Set func doc
-func (m *MyStruct) Set(item string) {
+func (m *MyStruct) Set(item Data) {
 }
 
 //` + `go:generate ifaces /tmp/test_ifaces.go
@@ -135,8 +136,11 @@ func (s *Service) Status() int {
 
 func TestGenerator_Generate(t *testing.T) {
 	gen := &Generator{
-		Type:      true,
-		Pre:       pre,
+		Type: true,
+		Pre:  pre,
+		Print: print.New(print.Options{
+			Exit: print.PANIC,
+		}),
 		Post:      post,
 		Comment:   comment,
 		Pkg:       pkg,
@@ -160,9 +164,9 @@ package %s
 // PreMyStructPost type document
 type PreMyStructPost interface {
 	// Get func doc
-	Get() (item string)
+	Get() (item originpkg.Data)
 	// Set func doc
-	Set(item string)
+	Set(item originpkg.Data)
 }
 `, pkg)
 	assert.Equal(t, expected, out.String())
@@ -173,10 +177,13 @@ func TestGenerator_Type_Struct(t *testing.T) {
 	gen := &Generator{
 		Type:    true,
 		Comment: comment,
-		Pkg:     pkg,
-		Post:    post,
-		Pre:     pre,
-		Struct:  true,
+		Print: print.New(print.Options{
+			Exit: print.PANIC,
+		}),
+		Pkg:    pkg,
+		Post:   post,
+		Pre:    pre,
+		Struct: true,
 	}
 	outfile := `test_ifaces.go`
 	srcs := []*Src{
@@ -200,9 +207,9 @@ import (
 // PreMyStructPost type document
 type PreMyStructPost interface {
 	// Get func doc
-	Get() (item string)
+	Get() (item originpkg.Data)
 	// Set func doc
-	Set(item string)
+	Set(item originpkg.Data)
 }
 
 // PreSomeStructPost type document
@@ -243,8 +250,11 @@ type PreIgnoreStructPost interface {
 
 func TestGenerator_Type_Match_NoTypeDoc(t *testing.T) {
 	gen := &Generator{
-		Type:      true,
-		NoTDoc:    true,
+		Type:   true,
+		NoTDoc: true,
+		Print: print.New(print.Options{
+			Exit: print.PANIC,
+		}),
 		Pre:       pre,
 		Post:      post,
 		Comment:   comment,
@@ -268,9 +278,9 @@ package %s
 
 type PreMyStructPost interface {
 	// Get func doc
-	Get() (item string)
+	Get() (item originpkg.Data)
 	// Set func doc
-	Set(item string)
+	Set(item originpkg.Data)
 }
 `, pkg)
 	assert.Equal(t, expected, out.String())
@@ -278,8 +288,11 @@ type PreMyStructPost interface {
 
 func TestGenerator_Type_Match_NoFuncDoc(t *testing.T) {
 	gen := &Generator{
-		Type:      true,
-		NoFDoc:    true,
+		Type:   true,
+		NoFDoc: true,
+		Print: print.New(print.Options{
+			Exit: print.PANIC,
+		}),
 		Pre:       pre,
 		Post:      post,
 		Comment:   comment,
@@ -303,8 +316,8 @@ package %s
 
 // PreMyStructPost type document
 type PreMyStructPost interface {
-	Get() (item string)
-	Set(item string)
+	Get() (item originpkg.Data)
+	Set(item originpkg.Data)
 }
 `, pkg)
 	assert.Equal(t, expected, out.String())
@@ -312,7 +325,10 @@ type PreMyStructPost interface {
 
 func TestGenerator_Type_Entry(t *testing.T) {
 	gen := Generator{
-		Type:    true,
+		Type: true,
+		Print: print.New(print.Options{
+			Exit: print.PANIC,
+		}),
 		Pre:     pre,
 		Post:    post,
 		Comment: comment,
@@ -391,8 +407,11 @@ type PreSomeStructPost interface {
 
 func TestGenerator_Type_Entry_NoTypeDoc(t *testing.T) {
 	gen := &Generator{
-		Type:    true,
-		NoTDoc:  true,
+		Type:   true,
+		NoTDoc: true,
+		Print: print.New(print.Options{
+			Exit: print.PANIC,
+		}),
 		Pre:     pre,
 		Post:    post,
 		Comment: comment,
@@ -469,8 +488,11 @@ type PreSomeStructPost interface {
 
 func TestGenerator_Type_Entry_NoFuncDoc(t *testing.T) {
 	gen := &Generator{
-		Type:    true,
-		NoFDoc:  true,
+		Type:   true,
+		NoFDoc: true,
+		Print: print.New(print.Options{
+			Exit: print.PANIC,
+		}),
 		Pre:     pre,
 		Post:    post,
 		Comment: comment,
@@ -539,9 +561,12 @@ type PreSomeStructPost interface {
 func TestGenerator_Recv(t *testing.T) {
 	gen := &Generator{
 		Comment: comment,
-		Pkg:     pkg,
-		Post:    `Iface`,
-		Method:  true,
+		Print: print.New(print.Options{
+			Exit: print.PANIC,
+		}),
+		Pkg:    pkg,
+		Post:   `Iface`,
+		Method: true,
 	}
 	srcfile := `test_ifaces.go`
 	srcs := []*Src{
@@ -569,9 +594,12 @@ type ServiceIface interface {
 
 	gen = &Generator{
 		Comment: comment,
-		Pkg:     pkg,
-		Post:    `Iface`,
-		Method:  true,
+		Print: print.New(print.Options{
+			Exit: print.PANIC,
+		}),
+		Pkg:    pkg,
+		Post:   `Iface`,
+		Method: true,
 	}
 	srcfile = `test_ifaces.go`
 	srcs = []*Src{

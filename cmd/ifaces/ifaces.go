@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/dexterp/ifaces/internal/di"
 	"github.com/dexterp/ifaces/internal/resources/cli"
 	"github.com/dexterp/ifaces/internal/resources/envs"
+	"github.com/dexterp/ifaces/internal/resources/modinfo"
 	"github.com/dexterp/ifaces/internal/resources/print"
 	"github.com/dexterp/ifaces/internal/resources/version"
 	"github.com/dexterp/ifaces/internal/services/generator"
@@ -45,10 +47,7 @@ func (r run) runGen() {
 	curGenSrc := r.curGenSrc()
 	bufOutput := &bytes.Buffer{}
 	err := r.gen.Generate(srcsList, curGenSrc, r.args.Out, bufOutput)
-	if err != nil {
-		r.print.Errorln(err.Error())
-		os.Exit(-1)
-	}
+	r.print.HasFatalln(err)
 	var outfile io.Writer
 	var closer func()
 	if r.args.Print || r.args.Out == `` {
@@ -58,10 +57,7 @@ func (r run) runGen() {
 	}
 	defer closer()
 	_, err = io.Copy(outfile, bufOutput)
-	if err != nil {
-		r.print.Errorf(`can not write to output: %s`, err.Error())
-		os.Exit(-1)
-	}
+	r.print.HasFatalf(`can not write to output: %v`, err)
 }
 
 func getArgs() *cli.Args {
@@ -75,7 +71,23 @@ func getArgs() *cli.Args {
 }
 
 func (r run) srcList() (srcs []*generator.Src) {
+	var modpath string
+	if r.args.Module != `` {
+		dir, err := os.Getwd()
+		r.print.HasFatalf(`can not determine working directory: %v`, err)
+		mi, err := modinfo.LoadFromParents(dir)
+		r.print.HasFatalf(`error loading go module: %v`, err)
+		modpath, err = mi.GetPath(r.args.Module)
+		r.print.HasFatalf(`can not find module directory %s: %s`, r.args.Module, err.Error())
+	}
 	for _, file := range r.args.Srcs {
+		if modpath != `` {
+			file = filepath.Join(modpath, file)
+		}
+		_, err := os.Stat(file)
+		if r.print.HasWarnf(`skipping %s: %v`, file, err) {
+			continue
+		}
 		srcs = append(srcs, &generator.Src{
 			File: file,
 			Src:  nil,
@@ -88,8 +100,7 @@ func (r run) srcList() (srcs []*generator.Src) {
 		})
 	}
 	if srcs == nil {
-		r.print.Errorln(`unable to open any source files. exiting`)
-		os.Exit(-1)
+		r.print.Fatalln(`unable to open any source files. exiting`)
 	}
 	return srcs
 }
@@ -100,14 +111,10 @@ func (r run) curGenSrc() *bytes.Buffer {
 	if r.args.Out != `` && r.args.Append {
 		curFile, err := os.Open(r.args.Out)
 		if err != nil && !os.IsNotExist(err) {
-			r.print.Errorf("error opening file %s: %s\n", r.args.Out, err.Error())
-			os.Exit(-1)
+			r.print.Fatalf("error opening file %s: %v\n", r.args.Out, err)
 		} else {
 			_, err := io.Copy(cur, curFile)
-			if err != nil {
-				r.print.Errorf("error reading %s: %s\n", r.args.Out, err.Error())
-				os.Exit(-1)
-			}
+			r.print.HasFatalf("error reading %s: %v\n", r.args.Out, err)
 		}
 	}
 	return cur
@@ -120,10 +127,7 @@ func (r run) outWriter(file string, writers ...io.Writer) (io.Writer, func()) {
 	)
 	if file != `` {
 		f, err := os.OpenFile(file, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0777)
-		if err != nil {
-			r.print.Errorf(`can not open file %s: %s`, file, err.Error())
-			os.Exit(-1)
-		}
+		r.print.HasFatalf("can not open file %s: %\n", file, err)
 		wrtrs = append(wrtrs, f)
 		closers = append(closers, f)
 	}

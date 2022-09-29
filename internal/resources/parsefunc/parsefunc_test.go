@@ -8,70 +8,72 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var testType string
+
 func TestToFuncDecl(t *testing.T) {
 	inSig := makeFuncType(`Func`, ``, ``, ``)
-	f := ToFuncDecl(``, &testHasType{}, inSig)
+	f := ToFuncDecl(``, testHasType, inSig)
 	assert.Equal(t, inSig, f.String())
 }
 
 func TestToFuncDecl_TypeParams(t *testing.T) {
 	inSig := makeFuncType(`Func`, `C comparable`, `str string`, `count uint`)
-	f := ToFuncDecl(``, &testHasType{}, inSig)
+	f := ToFuncDecl(``, testHasType, inSig)
 	assert.Equal(t, inSig, f.String())
 }
 
 func TestToFuncDecl_TypeParamsWithAlternates(t *testing.T) {
 	inSig := makeFuncType(`Sort`, `K comparable, Y uint8 | uint16`, `i K, x Y`, `error`)
-	f := ToFuncDecl(``, &testHasType{}, inSig)
+	f := ToFuncDecl(``, testHasType, inSig)
 	assert.True(t, f.UsesTypeParams())
 	assert.Equal(t, inSig, f.String())
 }
 
 func TestToFuncDecl_ParamsGroup(t *testing.T) {
 	inSig := makeFuncType(`ParamsGroup`, ``, `a, b string`, ``)
-	f := ToFuncDecl(``, &testHasType{}, inSig)
+	f := ToFuncDecl(``, testHasType, inSig)
 	assert.Equal(t, inSig, f.String())
 }
 
 func TestToFuncDecl_ParamsMap(t *testing.T) {
 	inSig := makeFuncType(`ParamsMap`, ``, `d map[string]interface{}`, ``)
-	f := ToFuncDecl(``, &testHasType{}, inSig)
+	f := ToFuncDecl(``, testHasType, inSig)
 	assert.Equal(t, inSig, f.String())
 }
 
 func TestToFuncDecl_ParamsMapMap(t *testing.T) {
 	inSig := makeFuncType(`ParamsMapMap`, ``, `d map[string]map[string]string`, ``)
-	f := ToFuncDecl(``, &testHasType{}, inSig)
+	f := ToFuncDecl(``, testHasType, inSig)
 	assert.Equal(t, inSig, f.String())
 }
 
 func TestToFuncDecl_ParamsMapSlice(t *testing.T) {
 	inSig := makeFuncType(`ParamsMapSlice`, ``, `d map[string][]string`, ``)
-	f := ToFuncDecl(``, &testHasType{}, inSig)
+	f := ToFuncDecl(``, testHasType, inSig)
 	assert.Equal(t, inSig, f.String())
 }
 
 func TestToFuncDecl_ReturnsGroupSlice(t *testing.T) {
 	inSig := makeFuncType(`ReturnsGroupSlice`, ``, `in string`, `a, b, c []string`)
-	f := ToFuncDecl(``, &testHasType{}, inSig)
+	f := ToFuncDecl(``, testHasType, inSig)
 	assert.Equal(t, inSig, f.String())
 }
 
 func TestToFuncDecl_ReturnsSliceMap(t *testing.T) {
 	inSig := makeFuncType(`ReturnsSliceMap`, ``, ``, `[]map[string]MyType`)
-	f := ToFuncDecl(``, &testHasType{}, inSig)
+	f := ToFuncDecl(``, testHasType, inSig)
 	assert.Equal(t, inSig, f.String())
 }
 
 func TestToFuncDecl_ReturnsSliceSlice(t *testing.T) {
 	inSig := makeFuncType(`ReturnsSliceSlice`, ``, ``, `[][]MyType`)
-	f := ToFuncDecl(``, &testHasType{}, inSig)
+	f := ToFuncDecl(``, testHasType, inSig)
 	assert.Equal(t, inSig, f.String())
 }
 
 func TestToFuncDecl_ReturnsPkgParam(t *testing.T) {
 	inSig := makeFuncType(`ReturnsPkgParam`, ``, ``, `pkg.MyType`)
-	f := ToFuncDecl(``, &testHasType{}, inSig)
+	f := ToFuncDecl(``, testHasType, inSig)
 	assert.Equal(t, inSig, f.String())
 }
 
@@ -79,7 +81,8 @@ func TestToFuncDecl_AddPkg(t *testing.T) {
 	inSig := `AddPkg(a []*MyType, b []map[MyType]*NoType) MyType`
 	expected := `AddPkg(a []*pkg.MyType, b []map[pkg.MyType]*NoType) pkg.MyType`
 	pkg := `pkg`
-	f := ToFuncDecl(pkg, &testHasType{typ: `MyType`}, inSig)
+	testType = `MyType`
+	f := ToFuncDecl(pkg, testHasType, inSig)
 	assert.Equal(t, expected, f.String())
 }
 
@@ -129,10 +132,6 @@ func makeFuncType(inFunc, inGenerics, inParams, inRet string) string {
 	return fmt.Sprintf(`%s%s(%s)%s`, inFunc, inGenericsWrap, inParams, inRetWrap)
 }
 
-type testHasType struct {
-	typ string
-}
-
-func (ht testHasType) HasType(typ string) bool {
-	return typ == ht.typ
+func testHasType(typ string) bool {
+	return typ == testType
 }

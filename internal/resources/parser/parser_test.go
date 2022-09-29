@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/dexterp/ifaces/internal/resources/types"
@@ -175,8 +176,27 @@ func TestParser_Package(t *testing.T) {
 func TestParser_parseGeneratorCmts(t *testing.T) {
 	p, err := Parse(`src.go`, []byte(varSrc()))
 	assert.NoError(t, err)
-	if assert.Equal(t, 2, len(p.genCmts)) {
-		assert.Equal(t, 7, p.genCmts[0].Line)
-		assert.Equal(t, 9, p.genCmts[1].Line)
+	if assert.Equal(t, 2, len(p.comments)) {
+		assert.Equal(t, 7, p.comments[0].Line)
+		assert.Equal(t, 9, p.comments[1].Line)
 	}
+}
+
+func TestReadSource_File(t *testing.T) {
+	f, err := os.CreateTemp(``, ``)
+	assert.NoError(t, err)
+	src := `package mypkg
+`
+	f.WriteString(src) // nolint
+	f.Close()          // nolint
+	name := f.Name()
+
+	b, err := readSource(name, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, src, string(*b))
+}
+
+func TestReadSource_JunkData(t *testing.T) {
+	_, err := readSource(`src.go`, struct{}{})
+	assert.Error(t, err)
 }

@@ -5,13 +5,34 @@ package print
 // PrintIface handle printing
 type PrintIface interface {
 	// Level set level
-	Level(lvl int)
+	Level(lvl Level)
 	// Errorf print error
 	Errorf(format string, a ...any)
+	// HasErrorf same as Errorf function but only prints if a holds an error value.
+	HasErrorf(format string, a ...any) bool
 	// Errorln print error
 	Errorln(a ...any)
-	// Warn print warning
-	Warn(a ...any)
+	// HasErrorln same as Errorln function but only prints if a holds an error
+	// value.
+	HasErrorln(a ...any) bool
+	// Warnln print warning
+	Warnln(a ...any)
+	// HasWarn same as Warn function but only prints if a holds an error value.
+	HasWarnln(a ...any) bool
 	// Warnf print warning
 	Warnf(format string, a ...any)
+	// HasWarnf same as Warn but only prints if a holds an error value.
+	HasWarnf(format string, a ...any) bool
+	// Fatalln print a message then exit or panic if Exit level is set to PANIC.
+	// See the New function and Options struct to set the exit type.
+	Fatalln(a ...any)
+	// HasFatalln same as Fatal but only prints an error and exits or panics if a
+	// holds an error value.
+	HasFatalln(a ...any)
+	// Fatalf print a formatted message then exit or panic if exit level is set to
+	// PANIC. See the New function and Options struct to set the exit type.
+	Fatalf(format string, a ...any)
+	// HasFatal same as Fatal but only prints an error and exits or panics if a
+	// holds an error value.
+	HasFatalf(format string, a ...any)
 }

@@ -37,7 +37,7 @@ func TestParseArgs_Type_Manditory(t *testing.T) {
 func TestParseArgs_Type_Optional(t *testing.T) {
 	generatedsrc := filepath.Join(testpaths.TempDir(), pkg, file)
 	pkg = `otherpkg`
-	cmd := []string{"ifaces", "type", "-f", "src.go", generatedsrc, "-p", pkg, "-a", "--pre", pre, "--post", post, "-c", comment, "-t", matchType, "--no-fdoc", "--no-tdoc", "--print"}
+	cmd := []string{"ifaces", "type", generatedsrc, "--mod", "github.com/stretchr/testify", "-f", "src.go", "-p", pkg, "-a", "--pre", pre, "--post", post, "-c", comment, "-t", matchType, "--no-fdoc", "--no-tdoc", "--print"}
 	args, err := ParseArgs(cmd[1:], ``, stdout, stderr)
 	if !assert.NoError(t, err) {
 		t.FailNow()
@@ -73,7 +73,7 @@ func TestParseArgs_Method_Manditory(t *testing.T) {
 func TestParseArgs_Method_Optional(t *testing.T) {
 	generatedsrc := filepath.Join(testpaths.TempDir(), pkg, file)
 	pkg = `otherpkg`
-	cmd := []string{"ifaces", "method", generatedsrc, "-f", "src.go", "-p", pkg, "-a", "-m", "MyFunc", "--pre", pre, "--post", post, "-c", comment, "-t", matchType, "--no-fdoc", "--no-tdoc", "--print"}
+	cmd := []string{"ifaces", "method", generatedsrc, "--mod", "github.com/stretchr/testify", "-f", "src.go", "-p", pkg, "-a", "-m", "MyFunc", "--pre", pre, "--post", post, "-c", comment, "-t", matchType, "--no-fdoc", "--no-tdoc", "--print"}
 	args, err := ParseArgs(cmd[1:], ``, stdout, stderr)
 	if !assert.NoError(t, err) {
 		t.FailNow()

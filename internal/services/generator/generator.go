@@ -27,6 +27,7 @@ type Generator struct {
 	Method    bool             // Method method sub command
 	Comment   string           // Comment comment at the top of the file
 	Iface     string           // Iface explicitly set interface name
+	Module    string           // Module name of module to scan instead of scanning the file system
 	NoFDoc    bool             // NoFDoc omit copying function documentation
 	NoTDoc    bool             // NoTDoc omit copying type documentation
 	Pkg       string           // Pkg package name
@@ -103,11 +104,7 @@ func (g Generator) parseSrc(data *tdata.TData, importsList *[]addimports.ImportI
 		pth := srcs[i].File
 		src := srcs[i].Src
 		p, err := parser.Parse(pth, src)
-		if err != nil {
-			if errors.Unwrap(err) != nil {
-				err = errors.Unwrap(err)
-			}
-			g.Print.Warnf("skipping \"%s\": %s\n", pth, err.Error())
+		if g.Print.HasWarnf("skipping \"%s\": %v\n", pth, err) {
 			continue
 		}
 		foundFile = true
@@ -222,9 +219,9 @@ func (g Generator) populateRecvInterfaces(data *tdata.TData, src *Src, p *parser
 	return nil
 }
 
-func (g Generator) getRecvList(p *parser.Parser, src *Src) (r []*parser.Recv) {
+func (g Generator) getRecvList(p *parser.Parser, src *Src) (r []parser.Method) {
 	if g.MatchFunc != `` {
-		recvs := p.GetRecvsByPattern(g.MatchFunc)
+		recvs := p.GetRecvsByName(g.MatchFunc)
 		if g.MatchType != `` {
 			for _, recv := range recvs {
 				if match.Match(recv.TypeName(), g.MatchType) && match.Capitalized(recv.TypeName()) {
@@ -268,7 +265,7 @@ type Src struct {
 	Src  any
 }
 
-func addIfaceMethods(iface *tdata.Interface, methods []*parser.IfaceMethod, noFuncDoc bool) error {
+func addIfaceMethods(iface *tdata.Interface, methods []parser.Method, noFuncDoc bool) error {
 	for _, method := range methods {
 		m := tdata.NewMethod(method.Name(), method.Signature(), method.Doc(), noFuncDoc)
 		err := iface.Add(m)
@@ -283,7 +280,7 @@ func addIfaceMethods(iface *tdata.Interface, methods []*parser.IfaceMethod, noFu
 	return nil
 }
 
-func addRecvMethods(iface *tdata.Interface, recvs []*parser.Recv, parsedPkg, targetPkg string, noFuncDoc bool) error {
+func addRecvMethods(iface *tdata.Interface, recvs []parser.Method, parsedPkg, targetPkg string, noFuncDoc bool) error {
 	for _, recv := range recvs {
 		if recv.UsesTypeParams() {
 			continue

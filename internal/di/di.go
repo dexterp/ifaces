@@ -16,7 +16,7 @@ var (
 	Args   *cli.Args // Args command line options
 	Stderr io.Writer
 	Stdout io.Writer
-	Level  int
+	Level  print.Level
 )
 
 func MakeIfaceGen() generator.GeneratorIface {
@@ -25,7 +25,9 @@ func MakeIfaceGen() generator.GeneratorIface {
 		Method:    Args.CmdMethod,
 		Comment:   Args.Cmt,
 		Iface:     Args.Iface,
+		MatchFunc: Args.MatchFunc,
 		MatchType: Args.MatchType,
+		Module:    Args.Module,
 		NoFDoc:    Args.NoFDoc,
 		NoTDoc:    Args.NoTDoc,
 		Pkg:       Args.Pkg,

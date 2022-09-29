@@ -14,6 +14,7 @@ import (
 var (
 	ErrorDuplicateInterface = errors.New(`can not add duplicate interface`)
 	ErrorDuplicateMethod    = errors.New(`can not add duplicate method`)
+	reFirstWord             = regexp.MustCompile(`^\w+`)
 )
 
 type TData struct {
@@ -84,8 +85,7 @@ func (t Type) Doc() string {
 	if t.noTypeDoc {
 		return ``
 	}
-	re := regexp.MustCompile(`^\w+`)
-	doc := re.ReplaceAllString(t.doc, t.Name())
+	doc := reFirstWord.ReplaceAllString(t.doc, t.Name())
 	return wrapDoc(doc, false)
 }
 
