@@ -106,6 +106,7 @@ _test_setup:
 _release: ## Trigger a release by creating a tag and pushing to the upstream repository
 	@echo "### Releasing v$(VERSION)"
 	@$(MAKE) _isreleased 2> /dev/null
+	git fetch --tags
 	git tag v$(VERSION)
 	git push --tags
 
@@ -113,12 +114,6 @@ _release: ## Trigger a release by creating a tag and pushing to the upstream rep
 lint: internal/resources/version/version.go
 	golangci-lint run --enable=gocyclo; echo $$? > reports/exitcode-golangci-lint.txt
 	golint -set_exit_status ./..; echo $$? > reports/exitcode-golint.txt
-
-.PHONY: tag
-tag:
-	git fetch --tags
-	git tag v$(VERSION)
-	git push --tags
 
 .PHONY: deps
 deps: go.mod ## Install build dependencies
