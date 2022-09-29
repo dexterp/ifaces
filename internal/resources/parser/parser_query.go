@@ -5,7 +5,7 @@ import (
 )
 
 // GetIfaceMethods returns all the methods of an interface
-func (p *Parser) GetIfaceMethods(iface string) (methods []Method) {
+func (p *Parser) GetIfaceMethods(iface string) (methods []MethodIface) {
 	for _, m := range *p.InterfaceMethods {
 		if m.TypeName() == iface {
 			methods = append(methods, m)
@@ -15,7 +15,7 @@ func (p *Parser) GetIfaceMethods(iface string) (methods []Method) {
 }
 
 // GetRecvByLine
-func (p *Parser) GetRecvByLine(line int) (recv Method) {
+func (p *Parser) GetRecvByLine(line int) (recv MethodIface) {
 	end := p.NextComment(line)
 	for _, m := range *p.ReceiverMethods {
 		if end == 0 && m.Line() >= line {
@@ -28,7 +28,7 @@ func (p *Parser) GetRecvByLine(line int) (recv Method) {
 }
 
 // GetRecvsByName returns all receivers by a pattern
-func (p *Parser) GetRecvsByName(name string) (recvs []Method) {
+func (p *Parser) GetRecvsByName(name string) (recvs []MethodIface) {
 	for _, recv := range *p.ReceiverMethods {
 		if recv.Name() == name && match.Capitalized(recv.Name()) {
 			recvs = append(recvs, recv)
@@ -38,7 +38,7 @@ func (p *Parser) GetRecvsByName(name string) (recvs []Method) {
 }
 
 // GetRecvsByType returns all the function interfaces for
-func (p *Parser) GetRecvsByType(typ string) (recvs []Method) {
+func (p *Parser) GetRecvsByType(typ string) (recvs []MethodIface) {
 	for _, recv := range *p.ReceiverMethods {
 		sig := recv.Signature()
 		if recv.TypeName() == typ && match.Capitalized(sig) {

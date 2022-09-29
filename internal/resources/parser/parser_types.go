@@ -66,7 +66,10 @@ func (r Type) Type() int {
 	return r.typ
 }
 
-type InterfaceMethod struct {
+//go:generate ifaces type parser_ifaces.go --post Iface
+
+// Method receiver or interface method
+type Method struct {
 	doc       string
 	line      int
 	name      string
@@ -76,92 +79,46 @@ type InterfaceMethod struct {
 	hasType   typecheck.HasType
 }
 
-func (i *InterfaceMethod) SetPkg(pkg string) {
+// SetPkg set the prefix when exporting to a new package. E.G. MyType will be
+// converted to pkg.MyType.
+func (i *Method) SetPkg(pkg string) {
 	i.pkg = pkg
 }
 
-func (i InterfaceMethod) Line() int {
+// Line return line number in source code
+func (i Method) Line() int {
 	return i.line
 }
 
-func (i InterfaceMethod) TypeName() string {
+// TypeName return the type name or receiver name for this method
+func (i Method) TypeName() string {
 	return i.typeName
 }
 
 // Name method name
-func (i InterfaceMethod) Name() string {
+func (i Method) Name() string {
 	return i.name
 }
 
-// Doc returns function documentation
-func (i InterfaceMethod) Doc() string {
+// Doc method documentation
+func (i Method) Doc() string {
 	return i.doc
 }
 
 // Signature return the function signature
-func (i InterfaceMethod) Signature() string {
+func (i Method) Signature() string {
 	f := parsefunc.ToFuncDecl(i.pkg, i.hasType, i.signature)
 	return f.String()
 }
 
 // UsesTypeParams returns true if function declaration contains type parameters
-func (i InterfaceMethod) UsesTypeParams() bool {
+func (i Method) UsesTypeParams() bool {
 	f := parsefunc.ToFuncDecl(i.pkg, i.hasType, i.signature)
 	return f.UsesTypeParams()
 }
 
-//go:generate ifaces type parser_ifaces.go -i MethodIface
-
-// ReceiverMethod function receiver
-type ReceiverMethod struct {
-	doc       string
-	line      int
-	name      string
-	pkg       string
-	signature string
-	typeName  string
-	hasType   typecheck.HasType
-}
-
-// SetPkg set the package
-func (r *ReceiverMethod) SetPkg(pkg string) {
-	r.pkg = pkg
-}
-
-// Line line number
-func (r ReceiverMethod) Line() int {
-	return r.line
-}
-
-// TypeName typename
-func (r ReceiverMethod) TypeName() string {
-	return r.typeName
-}
-
-// Name function name
-func (r ReceiverMethod) Name() string {
-	return r.name
-}
-
-// Doc returns function documentation
-func (r ReceiverMethod) Doc() string {
-	return r.doc
-}
-
-// Signature return the function signature
-func (r ReceiverMethod) Signature() string {
-	f := parsefunc.ToFuncDecl(r.pkg, r.hasType, r.signature)
-	return f.String()
-}
-
-// UsesTypeParams returns true if function declaration contains type parameters
-func (r ReceiverMethod) UsesTypeParams() bool {
-	f := parsefunc.ToFuncDecl(r.pkg, r.hasType, r.signature)
-	return f.UsesTypeParams()
-}
-
-func parseInterfaceMethod(fset *token.FileSet, ts *ast.TypeSpec, astField *ast.Field, hasType typecheck.HasType) *InterfaceMethod {
-	return &InterfaceMethod{
+func parseInterfaceMethod(fset *token.FileSet, ts *ast.TypeSpec, astField *ast.Field, hasType typecheck.HasType) *Method {
+	return &Method{
 		doc:       astField.Doc.Text(),
 		line:      fset.Position(astField.Pos()).Line,
 		name:      astField.Names[0].String(),
@@ -190,8 +147,8 @@ func parseTypeType(astTypeSpec *ast.TypeSpec) int {
 	return types.UNKNOWN
 }
 
-func parseReceiverMethods(fset *token.FileSet, astFuncDecl *ast.FuncDecl, hasType typecheck.HasType) *ReceiverMethod {
-	return &ReceiverMethod{
+func parseReceiverMethods(fset *token.FileSet, astFuncDecl *ast.FuncDecl, hasType typecheck.HasType) *Method {
+	return &Method{
 		doc:       strings.TrimSuffix(astFuncDecl.Doc.Text(), "\n"),
 		line:      fset.Position(astFuncDecl.Pos()).Line,
 		name:      astFuncDecl.Name.String(),

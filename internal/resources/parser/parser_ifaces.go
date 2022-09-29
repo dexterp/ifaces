@@ -2,17 +2,18 @@
 
 package parser
 
-// Method function receiver
-type Method interface {
-	// SetPkg set the package
+// MethodIface receiver or interface method
+type MethodIface interface {
+	// SetPkg set the prefix when exporting to a new package. E.G. MyType will be
+	// converted to pkg.MyType.
 	SetPkg(pkg string)
-	// Line line number
+	// Line return line number in source code
 	Line() int
-	// TypeName typename
+	// TypeName return the type name or receiver name for this method
 	TypeName() string
-	// Name function name
+	// Name method name
 	Name() string
-	// Doc returns function documentation
+	// Doc method documentation
 	Doc() string
 	// Signature return the function signature
 	Signature() string

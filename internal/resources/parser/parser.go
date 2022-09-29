@@ -19,8 +19,8 @@ type Parser struct {
 	fset             *token.FileSet
 	path             string
 	comments         []*Comment
-	ReceiverMethods  *[]Method
-	InterfaceMethods *[]Method
+	ReceiverMethods  *[]MethodIface
+	InterfaceMethods *[]MethodIface
 	Types            *[]*Type
 }
 
@@ -41,8 +41,8 @@ func Parse(path string, src any) (*Parser, error) {
 		fset:             fset,
 		astFile:          node,
 		comments:         []*Comment{},
-		InterfaceMethods: &[]Method{},
-		ReceiverMethods:  &[]Method{},
+		InterfaceMethods: &[]MethodIface{},
+		ReceiverMethods:  &[]MethodIface{},
 		Types:            &[]*Type{},
 	}
 	err = p.parseComments(srcByte)

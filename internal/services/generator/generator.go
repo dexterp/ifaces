@@ -219,7 +219,7 @@ func (g Generator) populateRecvInterfaces(data *tdata.TData, src *Src, p *parser
 	return nil
 }
 
-func (g Generator) getRecvList(p *parser.Parser, src *Src) (r []parser.Method) {
+func (g Generator) getRecvList(p *parser.Parser, src *Src) (r []parser.MethodIface) {
 	if g.MatchFunc != `` {
 		recvs := p.GetRecvsByName(g.MatchFunc)
 		if g.MatchType != `` {
@@ -265,7 +265,7 @@ type Src struct {
 	Src  any
 }
 
-func addIfaceMethods(iface *tdata.Interface, methods []parser.Method, noFuncDoc bool) error {
+func addIfaceMethods(iface *tdata.Interface, methods []parser.MethodIface, noFuncDoc bool) error {
 	for _, method := range methods {
 		m := tdata.NewMethod(method.Name(), method.Signature(), method.Doc(), noFuncDoc)
 		err := iface.Add(m)
@@ -280,7 +280,7 @@ func addIfaceMethods(iface *tdata.Interface, methods []parser.Method, noFuncDoc 
 	return nil
 }
 
-func addRecvMethods(iface *tdata.Interface, recvs []parser.Method, parsedPkg, targetPkg string, noFuncDoc bool) error {
+func addRecvMethods(iface *tdata.Interface, recvs []parser.MethodIface, parsedPkg, targetPkg string, noFuncDoc bool) error {
 	for _, recv := range recvs {
 		if recv.UsesTypeParams() {
 			continue
