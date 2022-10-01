@@ -66,7 +66,7 @@ func getArgs() *cli.Args {
 	if args == nil && err == nil {
 		os.Exit(0)
 	} else if err != nil {
-		os.Exit(-1)
+		os.Exit(127)
 	}
 	return args
 }

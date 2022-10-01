@@ -132,7 +132,7 @@ func (p Print) HasWarnf(format string, a ...any) bool {
 // the New function and Options struct to set the exit type.
 func (p Print) Fatalln(a ...any) {
 	fmt.Fprintln(p.stderr, a...)
-	p.callExit(-1)
+	p.callExit(127)
 }
 
 // HasFatalln same as Fatal but only prints an error and exits or panics if a
@@ -147,7 +147,7 @@ func (p Print) HasFatalln(a ...any) {
 // PANIC. See the New function and Options struct to set the exit type.
 func (p Print) Fatalf(format string, a ...any) {
 	fmt.Fprintf(p.stderr, format, a...)
-	p.callExit(-1)
+	p.callExit(127)
 }
 
 // HasFatal same as Fatal but only prints an error and exits or panics if a
