@@ -28,7 +28,7 @@ func TestParseArgs_Type_Manditory(t *testing.T) {
 		t.FailNow()
 	}
 	assert.True(t, args.CmdType)
-	assert.Zero(t, len(args.Srcs))
+	assert.Zero(t, len(args.Src))
 	assert.Equal(t, defaultCmt, args.Cmt)
 	assert.Zero(t, stdout.String())
 	assert.Zero(t, stderr.String())
@@ -43,7 +43,7 @@ func TestParseArgs_Type_Optional(t *testing.T) {
 		t.FailNow()
 	}
 	assert.True(t, args.CmdType)
-	assert.NotZero(t, len(args.Srcs))
+	assert.NotZero(t, len(args.Src))
 	assert.True(t, args.Append, `args.Append not set`)
 	assert.Equal(t, pre, args.Pre, `args.Pre incorrect`)
 	assert.Equal(t, post, args.Post, `args.Post incorrect`)
@@ -64,7 +64,7 @@ func TestParseArgs_Method_Manditory(t *testing.T) {
 		t.FailNow()
 	}
 	assert.True(t, args.CmdMethod)
-	assert.Zero(t, len(args.Srcs))
+	assert.Zero(t, len(args.Src))
 	assert.Equal(t, defaultCmt, args.Cmt)
 	assert.Zero(t, stdout.String())
 	assert.Zero(t, stderr.String())
@@ -79,7 +79,7 @@ func TestParseArgs_Method_Optional(t *testing.T) {
 		t.FailNow()
 	}
 	assert.True(t, args.CmdMethod)
-	assert.NotZero(t, len(args.Srcs))
+	assert.NotZero(t, len(args.Src))
 	assert.Equal(t, "MyFunc", args.MatchFunc)
 	assert.True(t, args.Append, `args.Append not set`)
 	assert.Equal(t, pre, args.Pre, `args.Pre incorrect`)

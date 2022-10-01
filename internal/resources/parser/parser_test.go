@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/dexterp/ifaces/internal/resources/types"
@@ -78,15 +77,15 @@ type PrintIface interface {
 }
 
 func TestParser_GetIfaceMethods(t *testing.T) {
-	p, err := Parse(`src_ifaces.go`, []byte(varIfaceSrc()))
+	p, err := Parse(`src_ifaces.go`, []byte(varIfaceSrc()), 0)
 	assert.NoError(t, err)
-	ifaces := p.GetTypesByType(types.INTERFACE)
+	ifaces := p.Query().GetTypesByType(types.INTERFACE)
 	if !assert.Len(t, ifaces, 1) {
 		t.FailNow()
 	}
 	name := ifaces[0].Name()
 	assert.Equal(t, `PrintIface`, name)
-	methods := p.GetIfaceMethods(name)
+	methods := p.Query().GetIfaceMethods(name)
 	if !assert.Len(t, methods, 2) {
 		t.FailNow()
 	}
@@ -113,14 +112,15 @@ func (t Type) Func2() {
 func (t Type) Func3() {
 }
 `
-	p, err := Parse(`src.go`, []byte(src))
+	file := `src.go`
+	p, err := Parse(file, []byte(src), 0)
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
-	n := p.GetRecvByLine(9)
+	n := p.Query().GetRecvByLine(file, 9)
 	assert.Nil(t, n)
 
-	r := p.GetRecvByLine(11)
+	r := p.Query().GetRecvByLine(file, 11)
 	if !assert.NotNil(t, r) {
 		t.FailNow()
 	}
@@ -130,13 +130,14 @@ func (t Type) Func3() {
 }
 
 func TestParser_GetTypeByLine(t *testing.T) {
-	p, err := Parse(`src.go`, []byte(varSrc()))
+	file := `src.go`
+	p, err := Parse(`src.go`, []byte(varSrc()), 0)
 	if err != nil {
 		t.Error(err)
 	}
-	typ := p.GetTypeByLine(7)
+	typ := p.Query().GetTypeByLine(file, 7)
 	assert.Nil(t, typ)
-	typ = p.GetTypeByLine(9)
+	typ = p.Query().GetTypeByLine(file, 9)
 	if !assert.NotNil(t, typ) {
 		t.FailNow()
 	}
@@ -147,11 +148,11 @@ func TestParser_GetTypeByLine(t *testing.T) {
 }
 
 func TestParser_GetTypeRecvs(t *testing.T) {
-	p, err := Parse(`src.go`, []byte(varSrc()))
+	p, err := Parse(`src.go`, []byte(varSrc()), 0)
 	if err != nil {
 		t.Error(err)
 	}
-	recvs := p.GetRecvsByType(varStruct1())
+	recvs := p.Query().GetRecvsByType(varStruct1())
 	if assert.Equal(t, 3, len(recvs)) {
 		assert.Regexp(t, `Parse\(.*\)`, recvs[0].Signature())
 		assert.Regexp(t, `Count\(\)`, recvs[1].Signature())
@@ -160,7 +161,7 @@ func TestParser_GetTypeRecvs(t *testing.T) {
 }
 
 func TestParser_Imports(t *testing.T) {
-	p, err := Parse(`src.go`, []byte(varSrc()))
+	p, err := Parse(`src.go`, []byte(varSrc()), 0)
 	if err != nil {
 		t.Error(err)
 	}
@@ -168,35 +169,16 @@ func TestParser_Imports(t *testing.T) {
 }
 
 func TestParser_Package(t *testing.T) {
-	p, err := Parse(`src.go`, []byte(varSrc()))
+	p, err := Parse(`src.go`, []byte(varSrc()), 0)
 	assert.NoError(t, err)
 	assert.Equal(t, varPkg(), p.Package())
 }
 
 func TestParser_parseGeneratorCmts(t *testing.T) {
-	p, err := Parse(`src.go`, []byte(varSrc()))
+	p, err := Parse(`src.go`, []byte(varSrc()), 0)
 	assert.NoError(t, err)
-	if assert.Equal(t, 2, len(p.comments)) {
-		assert.Equal(t, 7, p.comments[0].Line)
-		assert.Equal(t, 9, p.comments[1].Line)
+	if assert.Equal(t, 2, len(*p.comments)) {
+		assert.Equal(t, 7, (*p.comments)[0].Line)
+		assert.Equal(t, 9, (*p.comments)[1].Line)
 	}
-}
-
-func TestReadSource_File(t *testing.T) {
-	f, err := os.CreateTemp(``, ``)
-	assert.NoError(t, err)
-	src := `package mypkg
-`
-	f.WriteString(src) // nolint
-	f.Close()          // nolint
-	name := f.Name()
-
-	b, err := readSource(name, nil)
-	assert.NoError(t, err)
-	assert.Equal(t, src, string(*b))
-}
-
-func TestReadSource_JunkData(t *testing.T) {
-	_, err := readSource(`src.go`, struct{}{})
-	assert.Error(t, err)
 }

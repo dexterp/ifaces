@@ -5,10 +5,12 @@ package generator
 import (
 	"bytes"
 	"io"
+
+	"github.com/dexterp/ifaces/internal/resources/source"
 )
 
 // GeneratorIface interface generator
 type GeneratorIface interface {
 	// Generate generate interfaces source code for the gen sub command.
-	Generate(srcs []*Src, current *bytes.Buffer, outfile string, output io.Writer) error
+	Generate(srcs []*source.Source, current *bytes.Buffer, outfile string, output io.Writer) error
 }

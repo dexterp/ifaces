@@ -14,9 +14,10 @@ import (
 	"github.com/dexterp/ifaces/internal/resources/modinfo"
 	"github.com/dexterp/ifaces/internal/resources/parser"
 	"github.com/dexterp/ifaces/internal/resources/print"
+	"github.com/dexterp/ifaces/internal/resources/source"
+	"github.com/dexterp/ifaces/internal/resources/srcformat"
 	"github.com/dexterp/ifaces/internal/resources/tdata"
 	"github.com/dexterp/ifaces/internal/resources/types"
-	"golang.org/x/tools/imports"
 )
 
 //go:generate ifaces type generator_iface.go --post Iface
@@ -46,7 +47,7 @@ var gentmpl string
 var ErrorNoSourceFile = errors.New(`no source files processed`)
 
 // Generate generate interfaces source code for the gen sub command.
-func (g Generator) Generate(srcs []*Src, current *bytes.Buffer, outfile string, output io.Writer) error {
+func (g Generator) Generate(srcs []*source.Source, current *bytes.Buffer, outfile string, output io.Writer) error {
 	pkg, err := pckage(g.Pkg, outfile)
 	if err != nil {
 		return err
@@ -65,20 +66,16 @@ func (g Generator) Generate(srcs []*Src, current *bytes.Buffer, outfile string, 
 	if err != nil {
 		return err
 	}
-	finalSrc, err := imports.Process(outfile, importsOut.Bytes(), &imports.Options{
-		TabIndent: true,
-		TabWidth:  2,
-		Fragment:  true,
-		Comments:  true,
-	})
+	finalSrc := &bytes.Buffer{}
+	err = srcformat.Format(outfile, importsOut, finalSrc)
 	if err != nil {
 		return err
 	}
-	_, err = output.Write(finalSrc)
+	_, err = io.Copy(output, finalSrc)
 	return err
 }
 
-func (g Generator) parse(srcs []*Src, current *bytes.Buffer, outfile string, pkg string) (data *tdata.TData, importsList []addimports.ImportIface, err error) {
+func (g Generator) parse(srcs []*source.Source, current *bytes.Buffer, outfile string, pkg string) (data *tdata.TData, importsList []addimports.ImportIface, err error) {
 	data = &tdata.TData{
 		Comment: g.Comment,
 		NoFDoc:  g.NoFDoc,
@@ -98,12 +95,13 @@ func (g Generator) parse(srcs []*Src, current *bytes.Buffer, outfile string, pkg
 	return
 }
 
-func (g Generator) parseSrc(data *tdata.TData, importsList *[]addimports.ImportIface, srcs []*Src, pkg string) (err error) {
+func (g Generator) parseSrc(data *tdata.TData, importsList *[]addimports.ImportIface, srcs []*source.Source, pkg string) (err error) {
 	foundFile := false
 	for i := range srcs {
 		pth := srcs[i].File
 		src := srcs[i].Src
-		p, err := parser.Parse(pth, src)
+		line := srcs[i].Line
+		p, err := parser.Parse(pth, src, line)
 		if g.Print.HasWarnf("skipping \"%s\": %v\n", pth, err) {
 			continue
 		}
@@ -119,7 +117,7 @@ func (g Generator) parseSrc(data *tdata.TData, importsList *[]addimports.ImportI
 		if err != nil {
 			return err
 		}
-		*importsList = append(*importsList, getImports(p.Imports(), srcs[i].File)...)
+		*importsList = append(*importsList, getImportsAddPath(p.Imports(), srcs[i].File)...)
 	}
 	if !foundFile {
 		return ErrorNoSourceFile
@@ -132,13 +130,13 @@ func (g Generator) parseTargetSrc(data *tdata.TData, importsList *[]addimports.I
 	if src.Len() == 0 {
 		return nil
 	}
-	p, err := parser.Parse(path, src)
+	p, err := parser.Parse(path, src, 0)
 	if err != nil {
 		return fmt.Errorf(`parse error: %w\n`, err)
 	}
-	for _, typ := range p.GetTypesByType(types.INTERFACE) {
+	for _, typ := range p.Query().GetTypesByType(types.INTERFACE) {
 		iface, finish := makeInterface(data, typ.Name(), typ.Doc(), false)
-		methods := p.GetIfaceMethods(typ.Name())
+		methods := p.Query().GetIfaceMethods(typ.Name())
 		err = addIfaceMethods(iface, methods, g.NoFDoc)
 		if err != nil {
 			return err
@@ -148,10 +146,11 @@ func (g Generator) parseTargetSrc(data *tdata.TData, importsList *[]addimports.I
 			return err
 		}
 	}
+	*importsList = append(*importsList, getImports(p.Imports())...)
 	return nil
 }
 
-func (g Generator) populateTypeInterfaces(data *tdata.TData, src *Src, p *parser.Parser) (err error) {
+func (g Generator) populateTypeInterfaces(data *tdata.TData, src *source.Source, p *parser.Parser) (err error) {
 	if !g.Type {
 		return
 	}
@@ -170,7 +169,7 @@ func (g Generator) populateTypeInterfaces(data *tdata.TData, src *Src, p *parser
 			doc = typ.Doc()
 		}
 		iface, finish := makeInterface(data, name, doc, g.NoTDoc)
-		recvs := p.GetRecvsByType(typ.Name())
+		recvs := p.Query().GetRecvsByType(typ.Name())
 		err = addRecvMethods(iface, recvs, p.Package(), data.Pkg, g.NoFDoc)
 		if err != nil {
 			return err
@@ -186,7 +185,7 @@ func (g Generator) populateTypeInterfaces(data *tdata.TData, src *Src, p *parser
 	return nil
 }
 
-func (g Generator) populateRecvInterfaces(data *tdata.TData, src *Src, p *parser.Parser) (err error) {
+func (g Generator) populateRecvInterfaces(data *tdata.TData, src *source.Source, p *parser.Parser) (err error) {
 	if !g.Method {
 		return
 	}
@@ -197,7 +196,7 @@ func (g Generator) populateRecvInterfaces(data *tdata.TData, src *Src, p *parser
 	}
 	recvs := g.getRecvList(p, src)
 	for _, recv := range recvs {
-		typ := p.GetTypeByName(recv.TypeName())
+		typ := p.Query().GetTypeByName(recv.TypeName())
 		if !ifaceDefined {
 			name = g.Pre + typ.Name() + g.Post
 		}
@@ -219,9 +218,9 @@ func (g Generator) populateRecvInterfaces(data *tdata.TData, src *Src, p *parser
 	return nil
 }
 
-func (g Generator) getRecvList(p *parser.Parser, src *Src) (r []parser.MethodIface) {
+func (g Generator) getRecvList(p *parser.Parser, src *source.Source) (r []*parser.Method) {
 	if g.MatchFunc != `` {
-		recvs := p.GetRecvsByName(g.MatchFunc)
+		recvs := p.Query().GetRecvsByName(g.MatchFunc)
 		if g.MatchType != `` {
 			for _, recv := range recvs {
 				if match.Match(recv.TypeName(), g.MatchType) && match.Capitalized(recv.TypeName()) {
@@ -232,9 +231,10 @@ func (g Generator) getRecvList(p *parser.Parser, src *Src) (r []parser.MethodIfa
 			r = recvs
 		}
 	}
+	file := src.File
 	line := src.Line
 	if len(r) == 0 && line > 0 {
-		recv := p.GetRecvByLine(line)
+		recv := p.Query().GetRecvByLine(file, line)
 		if recv != nil {
 			r = append(r, recv)
 		}
@@ -242,16 +242,17 @@ func (g Generator) getRecvList(p *parser.Parser, src *Src) (r []parser.MethodIfa
 	return
 }
 
-func (g Generator) getTypeList(p *parser.Parser, src *Src) (t []*parser.Type) {
+func (g Generator) getTypeList(p *parser.Parser, src *source.Source) (t []*parser.Type) {
+	file := src.File
 	line := src.Line
 	if g.Struct {
-		t = append(t, p.GetTypesByType(types.STRUCT)...)
+		t = append(t, p.Query().GetTypesByType(types.STRUCT)...)
 	}
 	if g.MatchType != `` {
-		t = append(t, p.GetTypeByPattern(g.MatchType)...)
+		t = append(t, p.Query().GetTypeByPattern(g.MatchType)...)
 	}
 	if len(t) == 0 && line > 0 {
-		typ := p.GetTypeByLine(line)
+		typ := p.Query().GetTypeByLine(file, line)
 		if typ != nil {
 			t = append(t, typ)
 		}
@@ -259,13 +260,7 @@ func (g Generator) getTypeList(p *parser.Parser, src *Src) (t []*parser.Type) {
 	return
 }
 
-type Src struct {
-	File string
-	Line int
-	Src  any
-}
-
-func addIfaceMethods(iface *tdata.Interface, methods []parser.MethodIface, noFuncDoc bool) error {
+func addIfaceMethods(iface *tdata.Interface, methods []*parser.Method, noFuncDoc bool) error {
 	for _, method := range methods {
 		m := tdata.NewMethod(method.Name(), method.Signature(), method.Doc(), noFuncDoc)
 		err := iface.Add(m)
@@ -280,7 +275,7 @@ func addIfaceMethods(iface *tdata.Interface, methods []parser.MethodIface, noFun
 	return nil
 }
 
-func addRecvMethods(iface *tdata.Interface, recvs []parser.MethodIface, parsedPkg, targetPkg string, noFuncDoc bool) error {
+func addRecvMethods(iface *tdata.Interface, recvs []*parser.Method, parsedPkg, targetPkg string, noFuncDoc bool) error {
 	for _, recv := range recvs {
 		if recv.UsesTypeParams() {
 			continue
@@ -313,14 +308,27 @@ func applyTemplate(current *bytes.Buffer, data *tdata.TData) error {
 	return nil
 }
 
-func getImports(parsedImports []*parser.Import, path string) (imports []addimports.ImportIface) {
+func getImportsAddPath(parsedImports []*parser.Import, path string) (imports []addimports.ImportIface) {
 	for _, i := range parsedImports {
+		if i.Name() == `_` {
+			continue
+		}
 		imports = append(imports, i)
 	}
 	importPath, err := modinfo.GetImport(``, nil, path)
 	if importPath != `` && err != nil {
 		ip := addimports.NewImport(``, importPath)
 		imports = append(imports, ip)
+	}
+	return
+}
+
+func getImports(parsedImports []*parser.Import) (imports []addimports.ImportIface) {
+	for _, i := range parsedImports {
+		if i.Name() == `_` {
+			continue
+		}
+		imports = append(imports, i)
 	}
 	return
 }

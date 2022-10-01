@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"github.com/dexterp/ifaces/internal/resources/envs"
 	"github.com/dexterp/ifaces/internal/resources/modinfo"
 	"github.com/dexterp/ifaces/internal/resources/print"
+	"github.com/dexterp/ifaces/internal/resources/source"
 	"github.com/dexterp/ifaces/internal/resources/version"
 	"github.com/dexterp/ifaces/internal/services/generator"
 )
@@ -36,9 +38,8 @@ type run struct {
 }
 
 func (r run) checkSrcs() {
-	if len(r.args.Srcs) == 0 && (envs.Gofile() == `` || envs.Goline() < 1) {
-		r.print.Errorln(`no source file provided. needs -f <file> option or to run as part of a go generator. exiting`)
-		os.Exit(-1)
+	if r.args.Src == `` && (envs.Gofile() == `` || envs.Goline() < 1) {
+		r.print.Fatalln(`no source file provided. needs -f <file> option or to run as part of a go generator. exiting`)
 	}
 }
 
@@ -70,39 +71,16 @@ func getArgs() *cli.Args {
 	return args
 }
 
-func (r run) srcList() (srcs []*generator.Src) {
-	var modpath string
-	if r.args.Module != `` {
-		dir, err := os.Getwd()
-		r.print.HasFatalf(`can not determine working directory: %v`, err)
-		mi, err := modinfo.LoadFromParents(dir)
-		r.print.HasFatalf(`error loading go module: %v`, err)
-		modpath, err = mi.GetPath(r.args.Module)
-		r.print.HasFatalf(`can not find module directory %s: %s`, r.args.Module, err.Error())
-	}
-	for _, file := range r.args.Srcs {
-		if modpath != `` {
-			file = filepath.Join(modpath, file)
-		}
-		_, err := os.Stat(file)
-		if r.print.HasWarnf(`skipping %s: %v`, file, err) {
-			continue
-		}
-		srcs = append(srcs, &generator.Src{
-			File: file,
-			Src:  nil,
-		})
-	}
-	if envs.Gofile() != `` || envs.Goline() > 0 {
-		srcs = append(srcs, &generator.Src{
-			File: envs.Gofile(),
-			Line: envs.Goline(),
-		})
-	}
+func (r run) srcList() (srcs []*source.Source) {
+	added := map[string]any{}
+	path := r.args.Src
+	path = r.pathModulePrefix(path)
+	path = r.goGeneratePath(&srcs, added, path)
+	r.expandPath(&srcs, added, path)
 	if srcs == nil {
-		r.print.Fatalln(`unable to open any source files. exiting`)
+		r.print.Fatalln(`no valid source files found`)
 	}
-	return srcs
+	return
 }
 
 // curGenSrc return the contents of any previously generated source file
@@ -140,4 +118,80 @@ func (r run) outWriter(file string, writers ...io.Writer) (io.Writer, func()) {
 			c.Close()
 		}
 	}
+}
+
+// pathModulePrefix prefix the module path to the path if it exists
+func (r run) pathModulePrefix(path string) string {
+	if path == `` {
+		return path
+	}
+	// If Module option set, get the module path and add it as a prefix to path
+	var modpath string
+	if r.args.Module != `` {
+		dir, err := os.Getwd()
+		r.print.HasFatalln(err)
+		mi, err := modinfo.LoadFromParents(dir)
+		r.print.HasFatalf(`error loading go.mod file: %v`, err)
+		modpath, err = mi.GetPath(r.args.Module)
+		r.print.HasFatalf(`can not find module directory %s: %v`, r.args.Module, err)
+	}
+	if path != `` && modpath != `` {
+		path = filepath.Join(modpath, path)
+	}
+	return path
+}
+
+// expandPath expands path to a directory
+func (r run) expandPath(srcs *[]*source.Source, added map[string]any, path string) {
+	if path == `` {
+		return
+	}
+	// Expand file path to all go source files in the directory
+	info, err := os.Stat(path)
+	if e := errors.Unwrap(err); e != nil {
+		err = e
+	}
+	r.print.HasFatalf("%s: %v\n", path, err)
+
+	path = filepath.Clean(path)
+	var dir string
+	if info.IsDir() {
+		dir = path
+	} else {
+		if _, ok := added[path]; !ok {
+			*srcs = append(*srcs, &source.Source{
+				File: path,
+			})
+			added[path] = true
+		}
+		dir = filepath.Dir(path)
+	}
+	matches, err := filepath.Glob(filepath.Join(dir, `*.go`))
+	r.print.HasFatalf(`error reading directory %s:`, dir, err)
+	for _, m := range matches {
+		if _, ok := added[m]; ok {
+			continue
+		}
+		*srcs = append(*srcs, &source.Source{
+			File: m,
+			Src:  nil,
+		})
+		added[m] = true
+	}
+}
+
+// goGeneratePath add go:generate environment variable to sources list
+func (r run) goGeneratePath(srcs *[]*source.Source, added map[string]any, path string) string {
+	// Skip adding go:generate path if a path is already provided
+	if path != `` {
+		return path
+	}
+	if envs.Gofile() != `` || envs.Goline() > 0 {
+		*srcs = append(*srcs, &source.Source{
+			File: envs.Gofile(),
+			Line: envs.Goline(),
+		})
+		added[envs.Gofile()] = true
+	}
+	return envs.Gofile()
 }

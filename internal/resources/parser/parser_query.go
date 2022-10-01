@@ -4,9 +4,13 @@ import (
 	"github.com/dexterp/ifaces/internal/resources/match"
 )
 
+type Query struct {
+	Parser QueryParser
+}
+
 // GetIfaceMethods returns all the methods of an interface
-func (p *Parser) GetIfaceMethods(iface string) (methods []MethodIface) {
-	for _, m := range *p.InterfaceMethods {
+func (q *Query) GetIfaceMethods(iface string) (methods []*Method) {
+	for _, m := range q.Parser.InterfaceMethods() {
 		if m.TypeName() == iface {
 			methods = append(methods, m)
 		}
@@ -15,12 +19,12 @@ func (p *Parser) GetIfaceMethods(iface string) (methods []MethodIface) {
 }
 
 // GetRecvByLine
-func (p *Parser) GetRecvByLine(line int) (recv MethodIface) {
-	end := p.NextComment(line)
-	for _, m := range *p.ReceiverMethods {
-		if end == 0 && m.Line() >= line {
+func (q *Query) GetRecvByLine(file string, line int) (recv *Method) {
+	end := q.NextComment(file, line)
+	for _, m := range q.Parser.ReceiverMethods() {
+		if m.File() == file && end == 0 && m.Line() >= line {
 			return m
-		} else if m.Line() >= line && m.Line() < end {
+		} else if m.File() == file && m.Line() >= line && m.Line() < end {
 			return m
 		}
 	}
@@ -28,8 +32,8 @@ func (p *Parser) GetRecvByLine(line int) (recv MethodIface) {
 }
 
 // GetRecvsByName returns all receivers by a pattern
-func (p *Parser) GetRecvsByName(name string) (recvs []MethodIface) {
-	for _, recv := range *p.ReceiverMethods {
+func (q *Query) GetRecvsByName(name string) (recvs []*Method) {
+	for _, recv := range q.Parser.ReceiverMethods() {
 		if recv.Name() == name && match.Capitalized(recv.Name()) {
 			recvs = append(recvs, recv)
 		}
@@ -38,8 +42,8 @@ func (p *Parser) GetRecvsByName(name string) (recvs []MethodIface) {
 }
 
 // GetRecvsByType returns all the function interfaces for
-func (p *Parser) GetRecvsByType(typ string) (recvs []MethodIface) {
-	for _, recv := range *p.ReceiverMethods {
+func (q *Query) GetRecvsByType(typ string) (recvs []*Method) {
+	for _, recv := range q.Parser.ReceiverMethods() {
 		sig := recv.Signature()
 		if recv.TypeName() == typ && match.Capitalized(sig) {
 			recvs = append(recvs, recv)
@@ -50,12 +54,12 @@ func (p *Parser) GetRecvsByType(typ string) (recvs []MethodIface) {
 
 // GetTypeByLine GetTypeByLine returns the type at or after line. returns nil if the end of
 // file is reached or it encounters a iface generator comment.
-func (p Parser) GetTypeByLine(line int) *Type {
-	end := p.NextComment(line)
-	for _, t := range *p.Types {
-		if end == 0 && t.Line() >= line {
+func (q Query) GetTypeByLine(file string, line int) *Type {
+	end := q.NextComment(file, line)
+	for _, t := range q.Parser.Types() {
+		if file == t.File() && end == 0 && t.Line() >= line {
 			return t
-		} else if t.Line() >= line && t.Line() < end {
+		} else if t.file == t.File() && t.Line() >= line && t.Line() < end {
 			return t
 		}
 	}
@@ -63,8 +67,8 @@ func (p Parser) GetTypeByLine(line int) *Type {
 }
 
 // GetTypeByName fetch a type by its name
-func (p Parser) GetTypeByName(name string) *Type {
-	for _, t := range *p.Types {
+func (q Query) GetTypeByName(name string) *Type {
+	for _, t := range q.Parser.Types() {
 		if t.Name() == name {
 			return t
 		}
@@ -73,8 +77,8 @@ func (p Parser) GetTypeByName(name string) *Type {
 }
 
 // GetTypeByPattern use pattern to match types and return a list of type declarations
-func (p Parser) GetTypeByPattern(pattern string) (ts []*Type) {
-	for _, t := range *p.Types {
+func (q Query) GetTypeByPattern(pattern string) (ts []*Type) {
+	for _, t := range q.Parser.Types() {
 		if match.Match(t.Name(), pattern) && match.Capitalized(t.Name()) {
 			ts = append(ts, t)
 		}
@@ -83,8 +87,8 @@ func (p Parser) GetTypeByPattern(pattern string) (ts []*Type) {
 }
 
 // GetTypesByType return type
-func (p *Parser) GetTypesByType(typ int) (ts []*Type) {
-	for _, t := range *p.Types {
+func (q *Query) GetTypesByType(typ int) (ts []*Type) {
+	for _, t := range q.Parser.Types() {
 		if t.Type() == typ {
 			ts = append(ts, t)
 		}
@@ -92,11 +96,11 @@ func (p *Parser) GetTypesByType(typ int) (ts []*Type) {
 	return ts
 }
 
-// NextComment finds the next go:generate comment after line. Returns 0 if not
-// found
-func (p Parser) NextComment(line int) (end int) {
-	for _, c := range p.comments {
-		if c.Line > line {
+// NextComment finds the next go:generate comment after line and returns the
+// line number. Returns 0 if not found.
+func (q Query) NextComment(file string, line int) (end int) {
+	for _, c := range q.Parser.Comments() {
+		if c.File == file && c.Line > line {
 			end = c.Line
 		}
 	}

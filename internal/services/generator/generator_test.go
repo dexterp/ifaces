@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/dexterp/ifaces/internal/resources/print"
+	"github.com/dexterp/ifaces/internal/resources/source"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -147,7 +148,7 @@ func TestGenerator_Generate(t *testing.T) {
 		MatchType: matchType,
 	}
 	outfile := "src1.go"
-	srcs := []*Src{
+	srcs := []*source.Source{
 		{
 			File: outfile,
 			Src:  src1,
@@ -186,7 +187,7 @@ func TestGenerator_Type_Struct(t *testing.T) {
 		Struct: true,
 	}
 	outfile := `test_ifaces.go`
-	srcs := []*Src{
+	srcs := []*source.Source{
 		{
 			File: outfile,
 			Src:  src1,
@@ -262,7 +263,7 @@ func TestGenerator_Type_Match_NoTypeDoc(t *testing.T) {
 		MatchType: matchType,
 	}
 	outfile := `test_ifaces.go`
-	srcs := []*Src{
+	srcs := []*source.Source{
 		{
 			File: outfile,
 			Src:  src1,
@@ -300,7 +301,7 @@ func TestGenerator_Type_Match_NoFuncDoc(t *testing.T) {
 		MatchType: matchType,
 	}
 	outfile := `test_ifaces.go`
-	srcs := []*Src{
+	srcs := []*source.Source{
 		{
 			File: outfile,
 			Src:  src1,
@@ -390,7 +391,7 @@ type PreSomeStructPost interface {
 }
 `, pkg)
 	outfile := `test_ifaces.go`
-	srcs := []*Src{
+	srcs := []*source.Source{
 		{
 			File: outfile,
 			Src:  src1,
@@ -471,7 +472,7 @@ type PreSomeStructPost interface {
 }
 `, pkg)
 	outfile := `test_ifaces.go`
-	srcs := []*Src{
+	srcs := []*source.Source{
 		{
 			File: outfile,
 			Src:  src1,
@@ -543,7 +544,7 @@ type PreSomeStructPost interface {
 }
 `, pkg)
 	srcfile := `test_ifaces.go`
-	srcs := []*Src{
+	srcs := []*source.Source{
 		{
 			File: srcfile,
 			Src:  src1,
@@ -556,6 +557,7 @@ type PreSomeStructPost interface {
 	err := gen.Generate(srcs, in, "test_ifaces.go", out)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, out.String())
+	fmt.Println(out.String())
 }
 
 func TestGenerator_Recv(t *testing.T) {
@@ -569,7 +571,7 @@ func TestGenerator_Recv(t *testing.T) {
 		Method: true,
 	}
 	srcfile := `test_ifaces.go`
-	srcs := []*Src{
+	srcs := []*source.Source{
 		{
 			File: srcfile,
 			Line: 10,
@@ -602,7 +604,7 @@ type ServiceIface interface {
 		Method: true,
 	}
 	srcfile = `test_ifaces.go`
-	srcs = []*Src{
+	srcs = []*source.Source{
 		{
 			File: srcfile,
 			Src:  src2,
