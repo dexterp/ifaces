@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"regexp"
 	"text/template"
 
 	"github.com/dexterp/ifaces/internal/resources/addimports"
+	"github.com/dexterp/ifaces/internal/resources/cond"
 	"github.com/dexterp/ifaces/internal/resources/match"
 	"github.com/dexterp/ifaces/internal/resources/parser"
 	"github.com/dexterp/ifaces/internal/resources/pathtoimport"
@@ -46,9 +48,11 @@ var gentmpl string
 
 var ErrorNoSourceFile = errors.New(`no source files processed`)
 
+var reMatchValidPackage = regexp.MustCompile(`^[a-z][a-z0-9]+`)
+
 // Generate generate interfaces source code for the gen sub command.
 func (g Generator) Generate(srcs []*source.Source, current *bytes.Buffer, outfile string, output io.Writer) error {
-	pkg, err := setOutputPackage(g.Pkg, outfile)
+	pkg, err := g.setOutputPackage(g.Pkg, outfile)
 	if err != nil {
 		return err
 	}
@@ -80,7 +84,6 @@ func (g Generator) parse(srcs []*source.Source, current *bytes.Buffer, outfile s
 		Comment: g.Comment,
 		NoFDoc:  g.NoFDoc,
 		NoTDoc:  g.NoTDoc,
-		Pkg:     pkg,
 		Post:    g.Post,
 		Pre:     g.Pre,
 	}
@@ -100,6 +103,7 @@ func (g Generator) parseSrc(data *tdata.TData, importsList *[]addimports.ImportI
 	if err != nil {
 		return err
 	}
+	data.Pkg = cond.First(pkg, p.Package()).(string)
 	goGenerateSrc := firstWithLine(srcs...)
 	err = g.populateTypeInterfaces(data, goGenerateSrc, p)
 	if err != nil {
@@ -252,6 +256,27 @@ func (g Generator) getTypeList(p *parser.Parser, src *source.Source) (t []*parse
 	return
 }
 
+// setOutputPackage name of package in the output source.
+func (g Generator) setOutputPackage(pkgCli, path string) (string, error) {
+	if pkgCli != `` {
+		return pkgCli, nil
+	} else if path == `` {
+		return ``, nil
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return ``, err
+	}
+	d := filepath.Dir(abs)
+	pkgCli = filepath.Base(d)
+	m := reMatchValidPackage.FindAllString(pkgCli, 1)
+	if m == nil {
+		g.Print.HasFatalf(`invalid package name "%s" determined from path %s`, path, pkgCli)
+	}
+	pkgCli = m[0]
+	return pkgCli, nil
+}
+
 func addIfaceMethods(iface *tdata.Interface, methods []*parser.Method, noFuncDoc bool) error {
 	for _, method := range methods {
 		m := tdata.NewMethod(method.Name(), method.Signature(), method.Doc(), noFuncDoc)
@@ -338,23 +363,6 @@ func makeInterface(data *tdata.TData, name, doc string, noTDoc bool) (iface *tda
 		}
 	}
 	return
-}
-
-// setOutputPackage name of package in the output source.
-func setOutputPackage(p, path string) (string, error) {
-	if p != `` {
-		return p, nil
-	}
-	if path == `` {
-		return p, nil
-	}
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		return ``, err
-	}
-	d := filepath.Dir(abs)
-	p = filepath.Base(d)
-	return p, nil
 }
 
 func firstWithLine(srcs ...*source.Source) *source.Source {
