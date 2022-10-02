@@ -49,7 +49,9 @@ func Parse(path string, src any, line int) (*Parser, error) {
 }
 
 func ParseFiles(srcs []*source.Source) (p *Parser, first error) {
+	s := ``
 	p = &Parser{
+		pkg:          &s,
 		files:        &[]*file{},
 		comments:     &[]*Comment{},
 		recvMethods:  &[]*Method{},
@@ -59,7 +61,9 @@ func ParseFiles(srcs []*source.Source) (p *Parser, first error) {
 	}
 	for _, src := range srcs {
 		first = parseFile(p.pkg, p.files, p.imports, p.comments, p.types, p.recvMethods, p.ifaceMethods, src.File, src.Src, src.Line)
-		return nil, first
+		if first != nil {
+			return nil, first
+		}
 	}
 	return p, nil
 }

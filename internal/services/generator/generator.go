@@ -48,7 +48,7 @@ var ErrorNoSourceFile = errors.New(`no source files processed`)
 
 // Generate generate interfaces source code for the gen sub command.
 func (g Generator) Generate(srcs []*source.Source, current *bytes.Buffer, outfile string, output io.Writer) error {
-	pkg, err := pckage(g.Pkg, outfile)
+	pkg, err := setOutputPackage(g.Pkg, outfile)
 	if err != nil {
 		return err
 	}
@@ -96,32 +96,20 @@ func (g Generator) parse(srcs []*source.Source, current *bytes.Buffer, outfile s
 }
 
 func (g Generator) parseSrc(data *tdata.TData, importsList *[]addimports.ImportIface, srcs []*source.Source, pkg string) (err error) {
-	foundFile := false
-	for i := range srcs {
-		pth := srcs[i].File
-		src := srcs[i].Src
-		line := srcs[i].Line
-		p, err := parser.Parse(pth, src, line)
-		if g.Print.HasWarnf("skipping \"%s\": %v\n", pth, err) {
-			continue
-		}
-		foundFile = true
-		if len(srcs) == 1 && data.Pkg == `` {
-			data.Pkg = p.Package()
-		}
-		err = g.populateTypeInterfaces(data, srcs[i], p)
-		if err != nil {
-			return err
-		}
-		err = g.populateRecvInterfaces(data, srcs[i], p)
-		if err != nil {
-			return err
-		}
-		*importsList = append(*importsList, getImportsAddPath(p.Imports(), srcs[i].File)...)
+	p, err := parser.ParseFiles(srcs)
+	if err != nil {
+		return err
 	}
-	if !foundFile {
-		return ErrorNoSourceFile
+	goGenerateSrc := firstWithLine(srcs...)
+	err = g.populateTypeInterfaces(data, goGenerateSrc, p)
+	if err != nil {
+		return err
 	}
+	err = g.populateRecvInterfaces(data, goGenerateSrc, p)
+	if err != nil {
+		return err
+	}
+	*importsList = append(*importsList, getImportsAddPath(p.Imports(), srcs[0].File)...)
 	return nil
 }
 
@@ -231,30 +219,34 @@ func (g Generator) getRecvList(p *parser.Parser, src *source.Source) (r []*parse
 			r = recvs
 		}
 	}
-	file := src.File
-	line := src.Line
-	if len(r) == 0 && line > 0 {
-		recv := p.Query().GetRecvByLine(file, line)
-		if recv != nil {
-			r = append(r, recv)
+	if src != nil {
+		file := src.File
+		line := src.Line
+		if len(r) == 0 && line > 0 {
+			recv := p.Query().GetRecvByLine(file, line)
+			if recv != nil {
+				r = append(r, recv)
+			}
 		}
 	}
 	return
 }
 
 func (g Generator) getTypeList(p *parser.Parser, src *source.Source) (t []*parser.Type) {
-	file := src.File
-	line := src.Line
 	if g.Struct {
 		t = append(t, p.Query().GetTypesByType(types.STRUCT)...)
 	}
 	if g.MatchType != `` {
 		t = append(t, p.Query().GetTypeByPattern(g.MatchType)...)
 	}
-	if len(t) == 0 && line > 0 {
-		typ := p.Query().GetTypeByLine(file, line)
-		if typ != nil {
-			t = append(t, typ)
+	if src != nil {
+		file := src.File
+		line := src.Line
+		if len(t) == 0 && line > 0 {
+			typ := p.Query().GetTypeByLine(file, line)
+			if typ != nil {
+				t = append(t, typ)
+			}
 		}
 	}
 	return
@@ -347,8 +339,8 @@ func makeInterface(data *tdata.TData, name, doc string, noTDoc bool) (iface *tda
 	return
 }
 
-// pckage name of package in the output source.
-func pckage(p, path string) (string, error) {
+// setOutputPackage name of package in the output source.
+func setOutputPackage(p, path string) (string, error) {
 	if p != `` {
 		return p, nil
 	}
@@ -362,4 +354,13 @@ func pckage(p, path string) (string, error) {
 	d := filepath.Dir(abs)
 	p = filepath.Base(d)
 	return p, nil
+}
+
+func firstWithLine(srcs ...*source.Source) *source.Source {
+	for _, src := range srcs {
+		if src.Line > 0 {
+			return src
+		}
+	}
+	return nil
 }
