@@ -20,3 +20,7 @@ func Goline() int {
 func Gopath() string {
 	return os.Getenv("GOPATH")
 }
+
+func Goroot() string {
+	return os.Getenv("GOROOT")
+}

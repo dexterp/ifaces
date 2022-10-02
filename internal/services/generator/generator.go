@@ -11,8 +11,8 @@ import (
 
 	"github.com/dexterp/ifaces/internal/resources/addimports"
 	"github.com/dexterp/ifaces/internal/resources/match"
-	"github.com/dexterp/ifaces/internal/resources/modinfo"
 	"github.com/dexterp/ifaces/internal/resources/parser"
+	"github.com/dexterp/ifaces/internal/resources/pathtoimport"
 	"github.com/dexterp/ifaces/internal/resources/print"
 	"github.com/dexterp/ifaces/internal/resources/source"
 	"github.com/dexterp/ifaces/internal/resources/srcformat"
@@ -302,12 +302,13 @@ func applyTemplate(current *bytes.Buffer, data *tdata.TData) error {
 
 func getImportsAddPath(parsedImports []*parser.Import, path string) (imports []addimports.ImportIface) {
 	for _, i := range parsedImports {
-		if i.Name() == `_` {
+		if i.Name() == `_` || i.Name() == `.` {
 			continue
 		}
 		imports = append(imports, i)
 	}
-	importPath, err := modinfo.GetImport(``, nil, path)
+
+	importPath, err := pathtoimport.PathToImport(path)
 	if importPath != `` && err != nil {
 		ip := addimports.NewImport(``, importPath)
 		imports = append(imports, ip)
@@ -317,7 +318,7 @@ func getImportsAddPath(parsedImports []*parser.Import, path string) (imports []a
 
 func getImports(parsedImports []*parser.Import) (imports []addimports.ImportIface) {
 	for _, i := range parsedImports {
-		if i.Name() == `_` {
+		if i.Name() == `_` || i.Name() == `.` {
 			continue
 		}
 		imports = append(imports, i)
