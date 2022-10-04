@@ -74,20 +74,20 @@ _test:
 	$(MAKE) cc
 
 .PHONY: _unit
-_unit:
+_unit: reports/html
 	### Unit Tests
 	gotestsum --jsonfile reports/unit.json --junitfile reports/junit.xml -- -timeout 60s -covermode atomic -coverprofile=./reports/coverage.out -v ./...; echo $$? > reports/exitcode-unit.txt
-	@go-test-report -t "$(NAME) unit tests" -o reports/html/unit.html < reports/unit.json > /dev/null
+	@#go-test-report -t "$(NAME) unit tests" -o reports/html/unit.html < reports/unit.json > /dev/null
 
 .PHONY: _cc
-_cc:
+_cc: reports/html
 	### Code Coverage
 	@go-acc -o ./reports/coverage.out ./... > /dev/null
 	@go tool cover -func=./reports/coverage.out | tee reports/coverage.txt
 	@go tool cover -html=reports/coverage.out -o reports/html/coverage.html
 
 .PHONY: _cx
-_cx:
+_cx: reports/html
 	### Cyclomatix Complexity Report
 	@gocyclo -avg $(GODIRS) | grep -v _test.go | tee reports/cyclomaticcomplexity.txt
 	@contents=$$(cat reports/cyclomaticcomplexity.txt); echo "<html><title>cyclomatic complexity</title><body><pre>$${contents}</pre></body><html>" > reports/html/cyclomaticcomplexity.html
@@ -101,7 +101,7 @@ _release: ## Trigger a release by creating a tag and pushing to the upstream rep
 	git push --tags
 
 .PHONY: lint
-lint: internal/resources/version/version.go
+lint: internal/resources/version/version.go reports
 	golangci-lint run --enable=gocyclo; echo $$? > reports/exitcode-golangci-lint.txt
 	go vet ./...; echo $$? > reports/exitcode-vet.txt
 	staticcheck ./...; echo $$? > reports/exitcode-staticcheck.txt
@@ -150,9 +150,9 @@ REPORTS = reports/html/unit.html reports/html/coverage.html reports/html/cycloma
 .PHONY: $(REPORTS)
 $(REPORTS):
 ifeq ($(GOOS),darwin)
-	@test -f $@ && open $@
+	@-test -f $@ && open $@
 else ifeq ($(GOOS),linux)
-	@test -f $@ && xdg-open $@
+	@-test -f $@ && xdg-open $@
 endif
 
 # Check versionbump
@@ -184,6 +184,12 @@ tmp/install: .installs.txt
 	cat .installs.txt | egrep -v '^#' | xargs -I{} -t -n1 go install {}
 	@mkdir -p tmp
 	@touch tmp/installs
+
+reports:
+	@mkdir -p $@
+
+reports/html:
+	@mkdir -p $@
 
 #
 # make wrapper - Execute any target target prefixed with a underscore.
