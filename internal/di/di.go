@@ -5,7 +5,7 @@ import (
 
 	"github.com/dexterp/ifaces/internal/resources/cli"
 	"github.com/dexterp/ifaces/internal/resources/print"
-	"github.com/dexterp/ifaces/internal/services/generator"
+	"github.com/dexterp/ifaces/internal/services/generate"
 )
 
 //
@@ -19,10 +19,10 @@ var (
 	Level  print.Level
 )
 
-func MakeIfaceGen() generator.GeneratorIface {
-	return &generator.Generator{
+func MakeIfaceGen() generate.GenerateIface {
+	return &generate.Generate{
 		Type:      Args.CmdType,
-		Method:    Args.CmdMethod,
+		Method:    Args.CmdFunc,
 		Comment:   Args.Cmt,
 		Iface:     Args.Iface,
 		MatchFunc: Args.MatchFunc,
@@ -34,7 +34,7 @@ func MakeIfaceGen() generator.GeneratorIface {
 		Post:      Args.Post,
 		Pre:       Args.Pre,
 		Print:     MakePrint(),
-		Struct:    Args.Struct,
+		Struct:    Args.CmdStruct,
 		TDoc:      Args.TDoc,
 	}
 }

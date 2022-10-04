@@ -1,4 +1,4 @@
-package generator
+package generate
 
 import (
 	"bytes"
@@ -136,7 +136,7 @@ func (s *Service) Status() int {
 )
 
 func TestGenerator_Generate(t *testing.T) {
-	gen := &Generator{
+	gen := &Generate{
 		Type: true,
 		Pre:  pre,
 		Print: print.New(print.Options{
@@ -175,7 +175,7 @@ type PreMyStructPost interface {
 }
 
 func TestGenerator_Type_Struct(t *testing.T) {
-	gen := &Generator{
+	gen := &Generate{
 		Type:    true,
 		Comment: comment,
 		Print: print.New(print.Options{
@@ -250,7 +250,7 @@ type PreIgnoreStructPost interface {
 }
 
 func TestGenerator_Type_Match_NoTypeDoc(t *testing.T) {
-	gen := &Generator{
+	gen := &Generate{
 		Type:   true,
 		NoTDoc: true,
 		Print: print.New(print.Options{
@@ -288,7 +288,7 @@ type PreMyStructPost interface {
 }
 
 func TestGenerator_Type_Match_NoFuncDoc(t *testing.T) {
-	gen := &Generator{
+	gen := &Generate{
 		Type:   true,
 		NoFDoc: true,
 		Print: print.New(print.Options{
@@ -325,7 +325,7 @@ type PreMyStructPost interface {
 }
 
 func TestGenerator_Type_Entry(t *testing.T) {
-	gen := Generator{
+	gen := Generate{
 		Type: true,
 		Print: print.New(print.Options{
 			Exit: print.PANIC,
@@ -407,7 +407,7 @@ type PreSomeStructPost interface {
 }
 
 func TestGenerator_Type_Entry_NoTypeDoc(t *testing.T) {
-	gen := &Generator{
+	gen := &Generate{
 		Type:   true,
 		NoTDoc: true,
 		Print: print.New(print.Options{
@@ -488,7 +488,7 @@ type PreSomeStructPost interface {
 }
 
 func TestGenerator_Type_Entry_NoFuncDoc(t *testing.T) {
-	gen := &Generator{
+	gen := &Generate{
 		Type:   true,
 		NoFDoc: true,
 		Print: print.New(print.Options{
@@ -561,7 +561,7 @@ type PreSomeStructPost interface {
 }
 
 func TestGenerator_Recv(t *testing.T) {
-	gen := &Generator{
+	gen := &Generate{
 		Comment: comment,
 		Print: print.New(print.Options{
 			Exit: print.PANIC,
@@ -594,7 +594,7 @@ type ServiceIface interface {
 	assert.NoError(t, err)
 	assert.Equal(t, expected, out.String())
 
-	gen = &Generator{
+	gen = &Generate{
 		Comment: comment,
 		Print: print.New(print.Options{
 			Exit: print.PANIC,

@@ -37,3 +37,21 @@ func First(a ...any) any {
 	}
 	return nil
 }
+
+func StringValPos(val any, pos int, strs []string) bool {
+	for i, v := range strs {
+		if val == v && pos == i+1 {
+			return true
+		}
+	}
+	return false
+}
+
+func ContainsString(s string, strs ...string) bool {
+	for _, x := range strs {
+		if x == s {
+			return true
+		}
+	}
+	return false
+}

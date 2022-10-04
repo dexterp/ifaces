@@ -14,7 +14,7 @@ import (
 	"github.com/dexterp/ifaces/internal/resources/print"
 	"github.com/dexterp/ifaces/internal/resources/source"
 	"github.com/dexterp/ifaces/internal/resources/version"
-	"github.com/dexterp/ifaces/internal/services/generator"
+	"github.com/dexterp/ifaces/internal/services/generate"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 
 type run struct {
 	args  *cli.Args
-	gen   generator.GeneratorIface
+	gen   generate.GenerateIface
 	print print.PrintIface
 }
 

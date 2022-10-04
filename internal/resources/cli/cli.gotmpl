@@ -1,0 +1,38 @@
+Usage:{{ if .Struct }}
+  ifaces struct [-o <out>] [-a] [-d] [--ntdoc] [--nfdoc] [-p <pkg>] [-e <prefix>] [-s <suffix>] (-x <mod>|-f <src>)
+  ifaces struct [-o <out>] [-a] [-d] [--ntdoc] [--nfdoc] [-p <pkg>] [-e <prefix>] [-s <suffix>]{{ else if .Type }}
+  ifaces type [-o <out>] [-a] [-d] [(--tdoc <tdoc>|--ntdoc)] [--nfdoc] [-p <pkg>] [--nmethod] -i <iface>
+  ifaces type [-o <out>] [-a] [-d] [(--tdoc <tdoc>|--ntdoc)] [--nfdoc] [-p <pkg>] [--nmethod] -i <iface> (-x <mod>|-f <src>) -t <type>{{ else if .Func }}
+  ifaces func [-o <out>] [-a] [-d] [(--fdoc <fdoc>|--nfdoc)] [-p <pkg>] -i <iface>
+  ifaces func [-o <out>] [-a] [-d] [(--fdoc <fdoc>|--nfdoc)] [-p <pkg>] -i <iface> (-x <mod>|-f <src>) -t <type> -m <method>{{ else }}
+  ifaces (struct|type|func) [-h]{{ end }}{{ if not .Root }}
+
+Options:{{ if .Struct }}
+  struct          Generate interfaces for all structs.{{ end }}{{ if .Type }}
+  type            Generate interfaces for a matching type or the first type
+                  found after a go:generate comment within Go source file.{{ end }}{{ if .Func }}
+  func            Generate interface for an individual method from the command
+                  line or the first method found after a go:generate command in a Go source file.{{ end }}
+  -o <out>        Output file. Truncated unless -a is set. 
+  -a              Add to output file instead of truncating.
+  -d              Display generated source in stdout. This is the default when
+                  no output file is provided.{{ if .Type }}
+  --tdoc <tdoc>   Custom type document. Defaults to the origin type document.{{ end }}{{ if or .Struct .Type }}
+  --ntdoc         Do not copy doc from the source type to the interface type.{{ end }}{{ if .Func }}
+  --fdoc <fdoc>   Custom function document. Defaults to the origin function document.{{ end }}
+  --nfdoc         Do not copy function docs to the interface function type.
+  -p <pkg>        Package name. Defaults to the parent directory name.{{ if or .Type .Func }}
+  -i <iface>      Optional interface type name. If omitted the type name is used
+                  with a prefix and/or suffix added.{{ end }}{{ if .Type }}
+  --nmethod       Do not add any methods to the interface. Methods can added with
+                  subseqent runs with the func sub command.{{ end }}{{ if .Struct }}
+  -e <prefix>     Add a prefix to interface type name.
+  -s <suffix>     Add a suffix to interface type name.{{ end }}
+  -x <mod>        Module plus package path. E.G. examples of path are
+                  github.com/stretchr/testify/assert
+                  github.com/stretchr/testify/assert/assertions.go
+                  github.com/stretchr/testify@v1.7.0/assert/assertions.go.
+  -f <src>        Source file to scan.{{ if or .Type .Func }}
+  -t <type>       Generate interfaces for types that match a string or wildcard.{{ end }}{{ if .Func }}
+  -m <method>     Generate an interface for methods that match a string or
+                  wildcard.{{ end }}{{ end }}

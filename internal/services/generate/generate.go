@@ -1,4 +1,4 @@
-package generator
+package generate
 
 import (
 	"bytes"
@@ -22,10 +22,10 @@ import (
 	"github.com/dexterp/ifaces/internal/resources/types"
 )
 
-//go:generate ifaces type generator_iface.go --post Iface
+//go:generate ifaces type -o generator_iface.go -i GenerateIface
 
-// Generator interface generator
-type Generator struct {
+// Generate interface generator
+type Generate struct {
 	Type      bool             // Type type subcommand
 	Method    bool             // Method method sub command
 	Comment   string           // Comment comment at the top of the file
@@ -51,7 +51,7 @@ var ErrorNoSourceFile = errors.New(`no source files processed`)
 var reMatchValidPackage = regexp.MustCompile(`^[a-z][a-z0-9]+`)
 
 // Generate generate interfaces source code for the gen sub command.
-func (g Generator) Generate(srcs []*source.Source, current *bytes.Buffer, outfile string, output io.Writer) error {
+func (g Generate) Generate(srcs []*source.Source, current *bytes.Buffer, outfile string, output io.Writer) error {
 	pkg, err := g.setOutputPackage(g.Pkg, outfile)
 	if err != nil {
 		return err
@@ -79,7 +79,7 @@ func (g Generator) Generate(srcs []*source.Source, current *bytes.Buffer, outfil
 	return err
 }
 
-func (g Generator) parse(srcs []*source.Source, current *bytes.Buffer, outfile string, pkg string) (data *tdata.TData, importsList []addimports.ImportIface, err error) {
+func (g Generate) parse(srcs []*source.Source, current *bytes.Buffer, outfile string, pkg string) (data *tdata.TData, importsList []addimports.ImportIface, err error) {
 	data = &tdata.TData{
 		Comment: g.Comment,
 		NoFDoc:  g.NoFDoc,
@@ -98,7 +98,7 @@ func (g Generator) parse(srcs []*source.Source, current *bytes.Buffer, outfile s
 	return
 }
 
-func (g Generator) parseSrc(data *tdata.TData, importsList *[]addimports.ImportIface, srcs []*source.Source, pkg string) (err error) {
+func (g Generate) parseSrc(data *tdata.TData, importsList *[]addimports.ImportIface, srcs []*source.Source, pkg string) (err error) {
 	p, err := parser.ParseFiles(srcs)
 	if err != nil {
 		return err
@@ -118,7 +118,7 @@ func (g Generator) parseSrc(data *tdata.TData, importsList *[]addimports.ImportI
 }
 
 // parseTargetSrc scans any previously generated source before any additions.
-func (g Generator) parseTargetSrc(data *tdata.TData, importsList *[]addimports.ImportIface, path string, src *bytes.Buffer) (err error) {
+func (g Generate) parseTargetSrc(data *tdata.TData, importsList *[]addimports.ImportIface, path string, src *bytes.Buffer) (err error) {
 	if src.Len() == 0 {
 		return nil
 	}
@@ -142,8 +142,8 @@ func (g Generator) parseTargetSrc(data *tdata.TData, importsList *[]addimports.I
 	return nil
 }
 
-func (g Generator) populateTypeInterfaces(data *tdata.TData, src *source.Source, p *parser.Parser) (err error) {
-	if !g.Type {
+func (g Generate) populateTypeInterfaces(data *tdata.TData, src *source.Source, p *parser.Parser) (err error) {
+	if !g.Type && !g.Struct {
 		return
 	}
 	var name string
@@ -177,7 +177,7 @@ func (g Generator) populateTypeInterfaces(data *tdata.TData, src *source.Source,
 	return nil
 }
 
-func (g Generator) populateRecvInterfaces(data *tdata.TData, src *source.Source, p *parser.Parser) (err error) {
+func (g Generate) populateRecvInterfaces(data *tdata.TData, src *source.Source, p *parser.Parser) (err error) {
 	if !g.Method {
 		return
 	}
@@ -210,7 +210,7 @@ func (g Generator) populateRecvInterfaces(data *tdata.TData, src *source.Source,
 	return nil
 }
 
-func (g Generator) getRecvList(p *parser.Parser, src *source.Source) (r []*parser.Method) {
+func (g Generate) getRecvList(p *parser.Parser, src *source.Source) (r []*parser.Method) {
 	if g.MatchFunc != `` {
 		recvs := p.Query().GetRecvsByName(g.MatchFunc)
 		if g.MatchType != `` {
@@ -236,7 +236,7 @@ func (g Generator) getRecvList(p *parser.Parser, src *source.Source) (r []*parse
 	return
 }
 
-func (g Generator) getTypeList(p *parser.Parser, src *source.Source) (t []*parser.Type) {
+func (g Generate) getTypeList(p *parser.Parser, src *source.Source) (t []*parser.Type) {
 	if g.Struct {
 		t = append(t, p.Query().GetTypesByType(types.STRUCT)...)
 	}
@@ -257,7 +257,7 @@ func (g Generator) getTypeList(p *parser.Parser, src *source.Source) (t []*parse
 }
 
 // setOutputPackage name of package in the output source.
-func (g Generator) setOutputPackage(pkgCli, path string) (string, error) {
+func (g Generate) setOutputPackage(pkgCli, path string) (string, error) {
 	if pkgCli != `` {
 		return pkgCli, nil
 	} else if path == `` {

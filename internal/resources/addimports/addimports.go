@@ -37,6 +37,7 @@ func (i Import) Path() string {
 }
 
 func AddImports(file string, src any, imports []ImportIface, output io.Writer) error {
+	// TODO - Fix problem with imports containing the same package identifier choosing the wrong package.
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, file, src, parser.ParseComments|parser.DeclarationErrors)
 	if err != nil {

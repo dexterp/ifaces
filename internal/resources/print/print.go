@@ -25,7 +25,7 @@ const (
 
 var mu = &sync.Mutex{}
 
-//go:generate ifaces type print_iface.go --post Iface
+//go:generate ifaces type -o print_iface.go -i PrintIface
 
 // Print handle printing
 type Print struct {
