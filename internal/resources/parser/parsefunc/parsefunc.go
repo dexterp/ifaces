@@ -17,14 +17,35 @@ var (
 	regexTypeSlice    = regexp.MustCompile(`^(\*)?\[\](.*)$`)
 )
 
-func ToFuncDecl(pkg string, has typecheck.HasType, method string) *FuncDecl {
+type FuncDecl struct {
+	// NeedsImport if true then parsing has detected the need to add the current
+	// package to the list of imports for the target file
+	NeedsImport bool
+
+	// Prefixes a list of prefix packages that were used by within this function
+	// signature.
+	Prefixes map[string]any
+
+	hasType typecheck.HasType
+
+	pkg        string
+	name       string
+	typeParams []*typeParams
+	params     []*param
+	returns    []*param
+}
+
+func ToFuncDecl(method, pkg string, hasType typecheck.HasType) *FuncDecl {
 	name, typeParams, params, returns := parseFuncDecl(method)
 	decl := &FuncDecl{
-		name:       name,
-		typeParams: parseTypeParams(pkg, has, typeParams),
-		params:     parseParams(pkg, has, params),
-		returns:    parseParams(pkg, has, returns),
+		Prefixes: map[string]any{},
+		name:     name,
+		hasType:  hasType,
+		pkg:      pkg,
 	}
+	decl.typeParams = decl.parseTypeParams(typeParams)
+	decl.params = decl.parseParams(params)
+	decl.returns = decl.parseParams(returns)
 	return decl
 }
 
@@ -36,7 +57,7 @@ func parseFuncDecl(sig string) (name, generics, params, ret string) {
 	return mtchs[1], mtchs[2], mtchs[3], mtchs[4]
 }
 
-func parseParams(pkg string, has typecheck.HasType, paramsstr string) (params []*param) {
+func (f FuncDecl) parseParams(paramsstr string) (params []*param) {
 	var (
 		paramsList [][]string
 		maxlen     int
@@ -58,34 +79,34 @@ func parseParams(pkg string, has typecheck.HasType, paramsstr string) (params []
 			switch len(pair) {
 			case 1:
 				params = append(params, &param{
-					hastype: has,
-					pkg:     pkg,
+					hastype: f.hasType,
+					pkg:     f.pkg,
 					name:    pair[0],
 				})
 			case 2:
 				params = append(params, &param{
-					hastype:  has,
-					pkg:      pkg,
+					hastype:  f.hasType,
+					pkg:      f.pkg,
 					name:     pair[0],
-					typ:      parseTyp(pkg, has, pair[1]),
-					typMap:   parseTypMap(pkg, has, pair[1]),
-					typSlice: parseTypSlice(pkg, has, pair[1]),
+					typ:      f.parseTyp(pair[1]),
+					typMap:   f.parseTypMap(pair[1]),
+					typSlice: f.parseTypSlice(pair[1]),
 				})
 			}
 		} else {
 			params = append(params, &param{
-				hastype:  has,
-				pkg:      pkg,
-				typ:      parseTyp(pkg, has, pair[0]),
-				typMap:   parseTypMap(pkg, has, pair[0]),
-				typSlice: parseTypSlice(pkg, has, pair[0]),
+				hastype:  f.hasType,
+				pkg:      f.pkg,
+				typ:      f.parseTyp(pair[0]),
+				typMap:   f.parseTypMap(pair[0]),
+				typSlice: f.parseTypSlice(pair[0]),
 			})
 		}
 	}
 	return params
 }
 
-func parseTypeParams(pkg string, hastype typecheck.HasType, gen string) (generics []*typeParams) {
+func (f *FuncDecl) parseTypeParams(gen string) (generics []*typeParams) {
 	if gen == `` {
 		return generics
 	}
@@ -107,14 +128,14 @@ func parseTypeParams(pkg string, hastype typecheck.HasType, gen string) (generic
 		}
 		for _, t := range strings.Split(typStr, `|`) {
 			t = strings.TrimSpace(t)
-			curType := parseTyp(pkg, hastype, t)
+			curType := f.parseTyp(t)
 			if curType != nil {
 				alternates = append(alternates, curType)
 			}
 		}
 		generics = append(generics, &typeParams{
-			hastype: hastype,
-			pkg:     pkg,
+			hastype: f.hasType,
+			pkg:     f.pkg,
 			name:    name,
 			typ:     alternates,
 		})
@@ -122,7 +143,7 @@ func parseTypeParams(pkg string, hastype typecheck.HasType, gen string) (generic
 	return generics
 }
 
-func parseTyp(pkg string, hastype typecheck.HasType, t string) *typ {
+func (f *FuncDecl) parseTyp(t string) *typ {
 	mtch := regexType.FindStringSubmatch(t)
 	if mtch == nil {
 		return nil
@@ -132,16 +153,24 @@ func parseTyp(pkg string, hastype typecheck.HasType, t string) *typ {
 			iface: true,
 		}
 	}
+	if strings.Contains(mtch[3], `.`) {
+		typSlc := strings.Split(mtch[3], `.`)
+		if len(typSlc) == 2 {
+			f.Prefixes[typSlc[0]] = mtch[3]
+		}
+	} else if f.hasType(mtch[3]) {
+		f.NeedsImport = true
+	}
 	return &typ{
-		pkg:      pkg,
-		hastype:  hastype,
+		pkg:      f.pkg,
+		hastype:  f.hasType,
 		variadic: mtch[1],
 		ptr:      mtch[2],
 		typ:      mtch[3],
 	}
 }
 
-func parseTypMap(pkg string, hastype typecheck.HasType, m string) *typMap {
+func (f *FuncDecl) parseTypMap(m string) *typMap {
 	mtch := regexTypeMapOrGen.FindStringSubmatch(m)
 	if mtch == nil {
 		return nil
@@ -150,31 +179,24 @@ func parseTypMap(pkg string, hastype typecheck.HasType, m string) *typMap {
 		return nil
 	}
 	return &typMap{
-		key:      parseTyp(pkg, hastype, mtch[2]),
-		elmType:  parseTyp(pkg, hastype, mtch[3]),
-		elmMap:   parseTypMap(pkg, hastype, mtch[3]),
-		elmSlice: parseTypSlice(pkg, hastype, mtch[3]),
+		key:      f.parseTyp(mtch[2]),
+		elmType:  f.parseTyp(mtch[3]),
+		elmMap:   f.parseTypMap(mtch[3]),
+		elmSlice: f.parseTypSlice(mtch[3]),
 	}
 }
 
-func parseTypSlice(pkg string, hastype typecheck.HasType, s string) *typSlice {
+func (f *FuncDecl) parseTypSlice(s string) *typSlice {
 	mtch := regexTypeSlice.FindStringSubmatch(s)
 	if mtch == nil {
 		return nil
 	}
 	return &typSlice{
 		ptr:      mtch[1],
-		elmType:  parseTyp(pkg, hastype, mtch[2]),
-		elmMap:   parseTypMap(pkg, hastype, mtch[2]),
-		elmSlice: parseTypSlice(pkg, hastype, mtch[2]),
+		elmType:  f.parseTyp(mtch[2]),
+		elmMap:   f.parseTypMap(mtch[2]),
+		elmSlice: f.parseTypSlice(mtch[2]),
 	}
-}
-
-type FuncDecl struct {
-	name       string
-	typeParams []*typeParams
-	params     []*param
-	returns    []*param
 }
 
 func (f FuncDecl) UsesTypeParams() bool {

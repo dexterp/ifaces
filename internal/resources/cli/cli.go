@@ -52,10 +52,17 @@ func usage(argv []string) string {
 	return buf.String()
 }
 
+func sliceStr2Any(in []string) (out []any) {
+	for _, x := range in {
+		out = append(out, x)
+	}
+	return
+}
+
 func ParseArgs(argv []string, version string, stdout io.Writer, stderr io.Writer) (*Args, error) {
 	var fnerr error
 	fn := func(err error, usageStr string) {
-		if cond.ContainsString("-h", argv...) {
+		if cond.EqualAny("-h", sliceStr2Any(argv)...) {
 			fmt.Fprintln(stdout, usage(argv))
 			os.Exit(0)
 		} else {

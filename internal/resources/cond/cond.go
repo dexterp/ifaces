@@ -1,10 +1,20 @@
 // cond conditionals package
 package cond
 
+import "reflect"
+
+// First return the first non empty value. This values are:
+//
+//   - string: any string with a length greater then 1
+//   - numeric: any non 0 value
+//   - bool: true values
+//   - anything else that is not nil
+//
+// If no non-zero values are found, the last variadic variable is returned.
 func First(a ...any) any {
-	l := len(a)
+	l := len(a) - 1
 	for i, y := range a {
-		end := i+1 >= 1
+		end := i == l
 		switch v := y.(type) {
 		case nil:
 			if end {
@@ -14,7 +24,7 @@ func First(a ...any) any {
 		case string:
 			if v != `` {
 				return y
-			} else if i+1 >= l {
+			} else if end {
 				return ``
 			}
 			continue
@@ -47,9 +57,18 @@ func StringValPos(val any, pos int, strs []string) bool {
 	return false
 }
 
-func ContainsString(s string, strs ...string) bool {
-	for _, x := range strs {
-		if x == s {
+func EqualAny(target any, a ...any) bool {
+	for _, x := range a {
+		if reflect.DeepEqual(target, x) {
+			return true
+		}
+	}
+	return false
+}
+
+func EqualAnyString(s string, eq ...string) bool {
+	for _, x := range eq {
+		if s == x {
 			return true
 		}
 	}

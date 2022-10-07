@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"github.com/dexterp/ifaces/internal/resources/parsefunc"
+	"github.com/dexterp/ifaces/internal/resources/parser/parsefunc"
 	"github.com/dexterp/ifaces/internal/resources/typecheck"
 )
 
@@ -14,7 +14,7 @@ type Comment struct {
 
 // Import
 type Import struct {
-	file string
+	File string
 	name string
 	path string
 }
@@ -27,91 +27,60 @@ func (i Import) Path() string {
 	return i.path
 }
 
+// Prefix
+type Prefix struct {
+	Text string
+	File string
+}
+
 // Type type declaration
 type Type struct {
-	doc  string
-	file string
-	line int
-	name string
-	typ  int
-}
-
-// File originating file
-func (r Type) File() string {
-	return r.file
-}
-
-// Line line number
-func (r Type) Line() int {
-	return r.line
-}
-
-// Doc type documentation
-func (r Type) Doc() string {
-	return r.doc
-}
-
-// Name type name
-func (r Type) Name() string {
-	return r.name
-}
-
-// Type get type of
-func (r Type) Type() int {
-	return r.typ
+	Doc  string
+	File string // File originating file
+	Line int
+	Name string
+	Type int
 }
 
 // Method receiver or interface method
 type Method struct {
-	doc       string
-	file      string
-	line      int
-	name      string
-	pkg       string
+	Doc       string
+	File      string // File originating file
+	Line      int
+	Name      string
+	Prefixes  []string
+	Pkg       string
 	signature string
-	typeName  string
+	TypeName  string
 	hasType   typecheck.HasType
-}
-
-// SetPkg set the prefix when exporting to a new package. E.G. MyType will be
-// converted to pkg.MyType.
-func (i *Method) SetPkg(pkg string) {
-	i.pkg = pkg
-}
-
-// File originating file
-func (i Method) File() string {
-	return i.file
-}
-
-// Line return line number in source code
-func (i Method) Line() int {
-	return i.line
-}
-
-// TypeName return the type name or receiver name for this method
-func (i Method) TypeName() string {
-	return i.typeName
-}
-
-// Name method name
-func (i Method) Name() string {
-	return i.name
-}
-
-// Doc method documentation
-func (i Method) Doc() string {
-	return i.doc
 }
 
 // Signature return the function signature
 func (i Method) Signature() string {
-	f := parsefunc.ToFuncDecl(i.pkg, i.hasType, i.signature)
+	f := parsefunc.ToFuncDecl(i.signature, i.Pkg, i.hasType)
 	return f.String()
 }
 
-// UsesTypeParams returns true if function declaration contains type parameters
+// NeedsImport
+func (i Method) NeedsImport() bool {
+	f := parsefunc.ToFuncDecl(i.signature, i.Pkg, i.hasType)
+	return f.NeedsImport
+}
+
+// ImportPrefixes
+func (i Method) ImportPrefixes() (prefixes []Prefix) {
+	f := parsefunc.ToFuncDecl(i.signature, i.Pkg, i.hasType)
+	for p := range f.Prefixes {
+		prefixes = append(prefixes, Prefix{
+			Text: p,
+			File: i.File,
+		})
+	}
+	return
+}
+
+// UsesTypeParams returns true if function declaration contains type parmeters
 func (i Method) UsesTypeParams() bool {
-	f := parsefunc.ToFuncDecl(i.pkg, i.hasType, i.signature)
+	f := parsefunc.ToFuncDecl(i.signature, i.Pkg, i.hasType)
 	return f.UsesTypeParams()
 }

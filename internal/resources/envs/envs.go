@@ -1,6 +1,7 @@
 package envs
 
 import (
+	"go/build"
 	"os"
 	"strconv"
 )
@@ -18,9 +19,17 @@ func Goline() int {
 }
 
 func Gopath() string {
-	return os.Getenv("GOPATH")
+	gopath := os.Getenv("GOPATH")
+	if gopath == `` {
+		gopath = build.Default.GOPATH
+	}
+	return gopath
 }
 
 func Goroot() string {
-	return os.Getenv("GOROOT")
+	goroot := os.Getenv("GOROOT")
+	if goroot == `` {
+		goroot = build.Default.GOROOT
+	}
+	return goroot
 }

@@ -10,104 +10,92 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/dexterp/ifaces/internal/resources/source"
+	"github.com/dexterp/ifaces/internal/resources/cond"
+	"github.com/dexterp/ifaces/internal/resources/parser/parsefunc"
+	"github.com/dexterp/ifaces/internal/resources/srcio"
 	"github.com/dexterp/ifaces/internal/resources/typecheck"
 	"github.com/dexterp/ifaces/internal/resources/types"
 )
 
 var reComments = regexp.MustCompile(`^//go:generate .*ifaces\W`)
 
-// ParserFiles parse files
+// Parser represents a source file with the extracted package name, comments
+// matching go:generate statements, interface methods, receiver methods and type
+// definitions.
 type Parser struct {
-	pkg          *string
-	files        *[]*file
-	comments     *[]*Comment
-	recvMethods  *[]*Method
-	ifaceMethods *[]*Method
-	types        *[]*Type
-	imports      *[]*Import
+	// Package package name
+	Package string
+
+	// Comment comments which match the prefix "//go:generate ifaces"
+	Comments []Comment
+
+	// InterfaceMethods interface methods
+	InterfaceMethods []*Method
+
+	// Imports imports
+	Imports []*Import
+
+	// ReceiverMethods receiver methods
+	ReceiverMethods []*Method
+
+	// Types types within this source
+	Types []Type
 }
 
-// Parse parse source were path is path to source and src is an array of bytes,
-// string of the sources or nil
-func Parse(path string, src any, line int) (*Parser, error) {
-	s := ``
-	p := &Parser{
-		pkg:          &s,
-		files:        &[]*file{},
-		comments:     &[]*Comment{},
-		ifaceMethods: &[]*Method{},
-		recvMethods:  &[]*Method{},
-		types:        &[]*Type{},
-		imports:      &[]*Import{},
-	}
-	err := parseFile(p.pkg, p.files, p.imports, p.comments, p.types, p.recvMethods, p.ifaceMethods, path, src, line)
+// Parse parses an individual file represented by path and src. src is the
+// contents of the go source file which can be a, string, byte array or
+// io.Reader. If src is nil then the source is read from file. Line represents
+// the line number in the file where the go:generate comment is located
+// otherwise it should be set to 0 or less.
+func Parse(file string, src any, line int) (*Parser, error) {
+	p := &parse{}
+	err := p.parse(file, src, line)
 	if err != nil {
 		return nil, err
 	}
-	return p, nil
+	return &Parser{
+		Package:          p.pkg,
+		Comments:         p.comments,
+		InterfaceMethods: p.ifaceMethods,
+		Imports:          p.imports,
+		ReceiverMethods:  p.recvMethods,
+		Types:            p.types,
+	}, nil
 }
 
-func ParseFiles(srcs []*source.Source) (p *Parser, first error) {
-	s := ``
-	p = &Parser{
-		pkg:          &s,
-		files:        &[]*file{},
-		comments:     &[]*Comment{},
-		recvMethods:  &[]*Method{},
-		ifaceMethods: &[]*Method{},
-		types:        &[]*Type{},
-		imports:      &[]*Import{},
-	}
+// ParseFiles creates the same output as Parse but parses multiple files.
+func ParseFiles(srcs []srcio.Source) (*Parser, error) {
+	p := &parse{}
 	for _, src := range srcs {
-		first = parseFile(p.pkg, p.files, p.imports, p.comments, p.types, p.recvMethods, p.ifaceMethods, src.File, src.Src, src.Line)
+		first := p.parse(src.File, src.Src, src.Line)
 		if first != nil {
 			return nil, first
 		}
 	}
-	return p, nil
+	return &Parser{
+		Package:          p.pkg,
+		Comments:         p.comments,
+		InterfaceMethods: p.ifaceMethods,
+		Imports:          p.imports,
+		ReceiverMethods:  p.recvMethods,
+		Types:            p.types,
+	}, nil
 }
 
-// Imports list of imports
-func (p Parser) Imports() (imports []*Import) {
-	return *p.imports
-}
-
-// InterfaceMethods
-func (p Parser) InterfaceMethods() []*Method {
-	return *p.ifaceMethods
-}
-
-// Package package file
-func (p Parser) Package() string {
-	return *p.pkg
-}
-
-// Comments
-func (p *Parser) Comments() []*Comment {
-	return *p.comments
-}
-
-// Query get query struct
-func (p *Parser) Query() *Query {
-	return &Query{Parser: p}
-}
-
-// ReceiverMethods return a list of parsed interface methods
-func (p *Parser) ReceiverMethods() []*Method {
-	return *p.recvMethods
-}
-
-// Types return a list of parsed types
-func (p *Parser) Types() []*Type {
-	return *p.types
+type parse struct {
+	pkg          string
+	comments     []Comment
+	ifaceMethods []*Method
+	imports      []*Import
+	recvMethods  []*Method
+	types        []Type
 }
 
 // hasTypeCheck returns a function to check if a type exists in the parsed source.
-func hasTypeCheck(types *[]*Type) typecheck.HasType {
+func (p *parse) hasTypeCheck() typecheck.HasType {
 	return func(typ string) (found bool) {
-		for _, t := range *types {
-			if t.Name() == typ {
+		for _, t := range p.types {
+			if t.Name == typ {
 				found = true
 			}
 		}
@@ -115,46 +103,59 @@ func hasTypeCheck(types *[]*Type) typecheck.HasType {
 	}
 }
 
-func parseAstFile(types *[]*Type, recvMethods *[]*Method, ifaceMethods *[]*Method, fset *token.FileSet, astFile *ast.File, file string) {
+func (p *parse) parse(path string, src any, line int) error {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, path, src, parser.ParseComments)
+	if err != nil {
+		return err
+	}
+	p.parseAstFile(fset, f, path)
+	p.parseComments(fset, f.Comments, path)
+	p.parseImports(f.Imports, path)
+	p.pkg = cond.First(p.pkg, f.Name.String()).(string)
+	return nil
+}
+
+func (p *parse) parseAstFile(fset *token.FileSet, astFile *ast.File, file string) {
 	ast.Inspect(astFile, func(n ast.Node) bool {
 		switch v := n.(type) {
 		case *ast.FuncDecl:
-			parseAstFuncDecl(recvMethods, fset, v, file, hasTypeCheck(types))
+			p.parseAstFuncDecl(fset, v, file)
 		case *ast.GenDecl:
-			parseAstGenDecl(types, ifaceMethods, fset, v, file, hasTypeCheck(types))
+			p.parseAstGenDecl(fset, v, file)
 		}
 		return true
 	})
 }
 
-func parseAstFuncDecl(recvMethods *[]*Method, fset *token.FileSet, astFuncDecl *ast.FuncDecl, file string, hasType typecheck.HasType) {
-	parseReceiverMethods(recvMethods, fset, astFuncDecl, file, hasType)
+func (p *parse) parseAstFuncDecl(fset *token.FileSet, astFuncDecl *ast.FuncDecl, file string) {
+	p.parseReceiverMethods(fset, astFuncDecl, file)
 }
 
-func parseAstGenDecl(types *[]*Type, ifaceMethods *[]*Method, fset *token.FileSet, astGenDecl *ast.GenDecl, file string, hasType typecheck.HasType) {
+func (p *parse) parseAstGenDecl(fset *token.FileSet, astGenDecl *ast.GenDecl, file string) {
 	for _, astSpec := range astGenDecl.Specs {
 		ts, ok := astSpec.(*ast.TypeSpec)
 		if !ok {
 			continue
 		}
-		parseType(types, fset, astGenDecl, ts, file)
+		p.parseType(fset, astGenDecl, ts, file)
 		switch v := ts.Type.(type) {
 		case *ast.InterfaceType:
 			for _, astField := range v.Methods.List {
-				parseInterfaceMethod(ifaceMethods, fset, ts, astField, file, hasType)
+				p.parseInterfaceMethod(fset, ts, astField, file)
 			}
 		}
 	}
 }
 
 // parseComments
-func parseComments(comments *[]*Comment, fset *token.FileSet, cgs []*ast.CommentGroup, file string) {
+func (p *parse) parseComments(fset *token.FileSet, cgs []*ast.CommentGroup, file string) {
 	for _, cg := range cgs {
 		for _, c := range cg.List {
 			if !reComments.MatchString(c.Text) {
 				continue
 			}
-			*comments = append(*comments, &Comment{
+			p.comments = append(p.comments, Comment{
 				File: file,
 				Line: fset.Position(c.Pos()).Line,
 				Text: c.Text,
@@ -163,27 +164,7 @@ func parseComments(comments *[]*Comment, fset *token.FileSet, cgs []*ast.Comment
 	}
 }
 
-func parseFile(pkg *string, files *[]*file, imports *[]*Import, comments *[]*Comment, types *[]*Type, recvMethods *[]*Method, ifaceMethods *[]*Method, path string, src any, line int) error {
-	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, path, src, parser.ParseComments)
-	if err != nil {
-		return err
-	}
-	curFile := &file{
-		fset: fset,
-		file: f,
-	}
-	*files = append(*files, curFile)
-	parseAstFile(types, recvMethods, ifaceMethods, fset, f, path)
-	parseComments(comments, curFile.fset, curFile.file.Comments, path)
-	parseImports(imports, f.Imports, path)
-	if *pkg == `` {
-		*pkg = f.Name.String()
-	}
-	return nil
-}
-
-func parseImports(imports *[]*Import, imp []*ast.ImportSpec, file string) {
+func (p *parse) parseImports(imp []*ast.ImportSpec, file string) {
 	for _, i := range imp {
 		name := ``
 		path := ``
@@ -193,39 +174,50 @@ func parseImports(imports *[]*Import, imp []*ast.ImportSpec, file string) {
 		if i.Path != nil {
 			path = strings.Trim(i.Path.Value, `"`)
 		}
-		*imports = append(*imports, &Import{
-			file: file,
+		p.imports = append(p.imports, &Import{
+			File: file,
 			name: name,
 			path: path,
 		})
 	}
 }
 
-func parseInterfaceMethod(methods *[]*Method, fset *token.FileSet, ts *ast.TypeSpec, astField *ast.Field, file string, hasType typecheck.HasType) {
-	*methods = append(*methods, &Method{
-		doc:       astField.Doc.Text(),
-		file:      filepath.Base(file),
-		line:      fset.Position(astField.Pos()).Line,
-		name:      astField.Names[0].String(),
-		signature: signature(fset, astField.Names[0].String(), astField.Type),
-		typeName:  ts.Name.String(),
-		hasType:   hasType,
+func (p *parse) parseInterfaceMethod(fset *token.FileSet, ts *ast.TypeSpec, astField *ast.Field, file string) {
+	s := signature(fset, astField.Names[0].String(), astField.Type)
+	p.ifaceMethods = append(p.ifaceMethods, &Method{
+		Doc:       astField.Doc.Text(),
+		File:      filepath.Base(file),
+		Line:      fset.Position(astField.Pos()).Line,
+		Name:      astField.Names[0].String(),
+		signature: s,
+		TypeName:  ts.Name.String(),
+		hasType:   p.hasTypeCheck(),
 	})
 }
 
-func parseReceiverMethods(recvMethods *[]*Method, fset *token.FileSet, astFuncDecl *ast.FuncDecl, file string, hasType typecheck.HasType) {
+func (p *parse) parseReceiverMethods(fset *token.FileSet, astFuncDecl *ast.FuncDecl, file string) {
 	if astFuncDecl.Recv == nil {
 		return
 	}
-	*recvMethods = append(*recvMethods, &Method{
-		doc:       strings.TrimSuffix(astFuncDecl.Doc.Text(), "\n"),
-		file:      filepath.Base(file),
-		line:      fset.Position(astFuncDecl.Pos()).Line,
-		name:      astFuncDecl.Name.String(),
-		signature: signature(fset, astFuncDecl.Name.String(), astFuncDecl.Type),
-		typeName:  parseReceiverMethodsTypeName(*astFuncDecl),
-		hasType:   hasType,
+	s := signature(fset, astFuncDecl.Name.String(), astFuncDecl.Type)
+	p.recvMethods = append(p.recvMethods, &Method{
+		Doc:       strings.TrimSuffix(astFuncDecl.Doc.Text(), "\n"),
+		File:      filepath.Base(file),
+		Line:      fset.Position(astFuncDecl.Pos()).Line,
+		Name:      astFuncDecl.Name.String(),
+		Prefixes:  p.parseSigPrefixes(s),
+		signature: s,
+		TypeName:  parseReceiverMethodsTypeName(*astFuncDecl),
+		hasType:   p.hasTypeCheck(),
 	})
+}
+
+func (p parse) parseSigPrefixes(s string) (prefixes []string) {
+	f := parsefunc.ToFuncDecl(s, ``, p.hasTypeCheck())
+	for pre := range f.Prefixes {
+		prefixes = append(prefixes, pre)
+	}
+	return
 }
 
 func parseReceiverMethodsTypeName(astFuncDecl ast.FuncDecl) string {
@@ -243,13 +235,13 @@ func parseReceiverMethodsTypeName(astFuncDecl ast.FuncDecl) string {
 	return ``
 }
 
-func parseType(types *[]*Type, fset *token.FileSet, astGenDecl *ast.GenDecl, astTypeSpec *ast.TypeSpec, file string) {
-	*types = append(*types, &Type{
-		doc:  strings.TrimSuffix(astGenDecl.Doc.Text(), "\n"),
-		file: filepath.Base(file),
-		line: fset.Position(astTypeSpec.Pos()).Line,
-		name: strings.TrimSuffix(astTypeSpec.Name.String(), "\n"),
-		typ:  parseTypeType(astTypeSpec),
+func (p *parse) parseType(fset *token.FileSet, astGenDecl *ast.GenDecl, astTypeSpec *ast.TypeSpec, file string) {
+	p.types = append(p.types, Type{
+		Doc:  strings.TrimSuffix(astGenDecl.Doc.Text(), "\n"),
+		File: filepath.Base(file),
+		Line: fset.Position(astTypeSpec.Pos()).Line,
+		Name: strings.TrimSuffix(astTypeSpec.Name.String(), "\n"),
+		Type: parseTypeType(astTypeSpec),
 	})
 }
 
@@ -269,9 +261,4 @@ func signature(fset *token.FileSet, funcName string, n ast.Node) string {
 	sig := strings.Replace(buf.String(), `func`, funcName, 1)
 	sig = strings.TrimSuffix(sig, "\n")
 	return sig
-}
-
-type file struct {
-	fset *token.FileSet
-	file *ast.File
 }

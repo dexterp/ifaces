@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dexterp/ifaces/internal/resources/print"
-	"github.com/dexterp/ifaces/internal/resources/source"
+	"github.com/dexterp/ifaces/internal/resources/srcio"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -148,7 +148,7 @@ func TestGenerator_Generate(t *testing.T) {
 		MatchType: matchType,
 	}
 	outfile := "src1.go"
-	srcs := []*source.Source{
+	srcs := []srcio.Source{
 		{
 			File: outfile,
 			Src:  src1,
@@ -187,7 +187,7 @@ func TestGenerator_Type_Struct(t *testing.T) {
 		Struct: true,
 	}
 	outfile := `test_ifaces.go`
-	srcs := []*source.Source{
+	srcs := []srcio.Source{
 		{
 			File: outfile,
 			Src:  src1,
@@ -201,9 +201,7 @@ func TestGenerator_Type_Struct(t *testing.T) {
 
 package %s
 
-import (
-	"io"
-)
+import "io"
 
 // PreMyStructPost type document
 type PreMyStructPost interface {
@@ -263,7 +261,7 @@ func TestGenerator_Type_Match_NoTypeDoc(t *testing.T) {
 		MatchType: matchType,
 	}
 	outfile := `test_ifaces.go`
-	srcs := []*source.Source{
+	srcs := []srcio.Source{
 		{
 			File: outfile,
 			Src:  src1,
@@ -301,7 +299,7 @@ func TestGenerator_Type_Match_NoFuncDoc(t *testing.T) {
 		MatchType: matchType,
 	}
 	outfile := `test_ifaces.go`
-	srcs := []*source.Source{
+	srcs := []srcio.Source{
 		{
 			File: outfile,
 			Src:  src1,
@@ -391,7 +389,7 @@ type PreSomeStructPost interface {
 }
 `, pkg)
 	outfile := `test_ifaces.go`
-	srcs := []*source.Source{
+	srcs := []srcio.Source{
 		{
 			File: outfile,
 			Src:  src1,
@@ -472,7 +470,7 @@ type PreSomeStructPost interface {
 }
 `, pkg)
 	outfile := `test_ifaces.go`
-	srcs := []*source.Source{
+	srcs := []srcio.Source{
 		{
 			File: outfile,
 			Src:  src1,
@@ -544,7 +542,7 @@ type PreSomeStructPost interface {
 }
 `, pkg)
 	srcfile := `test_ifaces.go`
-	srcs := []*source.Source{
+	srcs := []srcio.Source{
 		{
 			File: srcfile,
 			Src:  src1,
@@ -571,7 +569,7 @@ func TestGenerator_Recv(t *testing.T) {
 		Method: true,
 	}
 	srcfile := `test_ifaces.go`
-	srcs := []*source.Source{
+	srcs := []srcio.Source{
 		{
 			File: srcfile,
 			Line: 10,
@@ -604,7 +602,7 @@ type ServiceIface interface {
 		Method: true,
 	}
 	srcfile = `test_ifaces.go`
-	srcs = []*source.Source{
+	srcs = []srcio.Source{
 		{
 			File: srcfile,
 			Src:  src2,

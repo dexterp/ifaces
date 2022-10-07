@@ -79,13 +79,13 @@ type PrintIface interface {
 func TestParser_GetIfaceMethods(t *testing.T) {
 	p, err := Parse(`src_ifaces.go`, []byte(varIfaceSrc()), 0)
 	assert.NoError(t, err)
-	ifaces := p.Query().GetTypesByType(types.INTERFACE)
+	ifaces := NewQuery(p).GetTypesByType(types.INTERFACE)
 	if !assert.Len(t, ifaces, 1) {
 		t.FailNow()
 	}
-	name := ifaces[0].Name()
+	name := ifaces[0].Name
 	assert.Equal(t, `PrintIface`, name)
-	methods := p.Query().GetIfaceMethods(name)
+	methods := NewQuery(p).GetIfaceMethods(name)
 	if !assert.Len(t, methods, 2) {
 		t.FailNow()
 	}
@@ -117,15 +117,15 @@ func (t Type) Func3() {
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
-	n := p.Query().GetRecvByLine(file, 9)
+	n := NewQuery(p).GetRecvByLine(file, 9)
 	assert.Nil(t, n)
 
-	r := p.Query().GetRecvByLine(file, 11)
+	r := NewQuery(p).GetRecvByLine(file, 11)
 	if !assert.NotNil(t, r) {
 		t.FailNow()
 	}
-	assert.Equal(t, 13, r.Line())
-	assert.Equal(t, `Func2`, r.Name())
+	assert.Equal(t, 13, r.Line)
+	assert.Equal(t, `Func2`, r.Name)
 
 }
 
@@ -135,16 +135,16 @@ func TestParser_GetTypeByLine(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	typ := p.Query().GetTypeByLine(file, 7)
+	typ := NewQuery(p).GetTypeByLine(file, 7)
 	assert.Nil(t, typ)
-	typ = p.Query().GetTypeByLine(file, 9)
+	typ = NewQuery(p).GetTypeByLine(file, 9)
 	if !assert.NotNil(t, typ) {
 		t.FailNow()
 	}
-	assert.NotEmpty(t, typ.Doc(), `type document is empty`)
-	assert.Equal(t, varStruct1(), typ.Name(), `invalid type name`)
-	assert.Equal(t, varLine(), typ.Line(), `wrong line number`)
-	assert.Equal(t, types.STRUCT, typ.Type(), `wrong type`)
+	assert.NotEmpty(t, typ.Doc, `type document is empty`)
+	assert.Equal(t, varStruct1(), typ.Name, `invalid type name`)
+	assert.Equal(t, varLine(), typ.Line, `wrong line number`)
+	assert.Equal(t, types.STRUCT, typ.Type, `wrong type`)
 }
 
 func TestParser_GetTypeRecvs(t *testing.T) {
@@ -152,7 +152,7 @@ func TestParser_GetTypeRecvs(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	recvs := p.Query().GetRecvsByType(varStruct1())
+	recvs := NewQuery(p).GetRecvsByType(varStruct1())
 	if assert.Equal(t, 3, len(recvs)) {
 		assert.Regexp(t, `Parse\(.*\)`, recvs[0].Signature())
 		assert.Regexp(t, `Count\(\)`, recvs[1].Signature())
@@ -165,20 +165,20 @@ func TestParser_Imports(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Equal(t, len(p.Imports()), 1)
+	assert.Equal(t, len(p.Imports), 1)
 }
 
 func TestParser_Package(t *testing.T) {
 	p, err := Parse(`src.go`, []byte(varSrc()), 0)
 	assert.NoError(t, err)
-	assert.Equal(t, varPkg(), p.Package())
+	assert.Equal(t, varPkg(), p.Package)
 }
 
 func TestParser_parseGeneratorCmts(t *testing.T) {
 	p, err := Parse(`src.go`, []byte(varSrc()), 0)
 	assert.NoError(t, err)
-	if assert.Equal(t, 2, len(*p.comments)) {
-		assert.Equal(t, 7, (*p.comments)[0].Line)
-		assert.Equal(t, 9, (*p.comments)[1].Line)
+	if assert.Equal(t, 2, len(p.Comments)) {
+		assert.Equal(t, 7, (p.Comments)[0].Line)
+		assert.Equal(t, 9, (p.Comments)[1].Line)
 	}
 }

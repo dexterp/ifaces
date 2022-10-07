@@ -1,4 +1,4 @@
-package pathtoimport
+package paths
 
 import (
 	"fmt"
@@ -26,14 +26,14 @@ func PathToImport(path string) (imp string, err error) {
 		return ``, err
 	}
 
-	goRootSrc := filepath.Join(envs.Goroot(), `src`)
+	goRootSrc := filepath.Join(envs.Goroot(), "src")
 	if strings.HasPrefix(abs, goRootSrc) {
-		if !info.IsDir() {
-			imp = filepath.Dir(abs)
-		} else {
+		if info.IsDir() {
 			imp = abs
+		} else {
+			imp = filepath.Dir(abs)
 		}
-		imp = strings.TrimPrefix(imp, goRootSrc)
+		imp = strings.TrimPrefix(imp, goRootSrc+string(os.PathSeparator))
 		if imp == `` {
 			return ``, fmt.Errorf(`invalid go source path: %s`, path)
 		}
@@ -50,14 +50,13 @@ func PathToImport(path string) (imp string, err error) {
 		} else {
 			imp = abs
 		}
-		imp = strings.TrimPrefix(imp, goRootSrc)
+		imp = strings.TrimPrefix(imp, goPathSrc+string(os.PathSeparator))
+		if os.PathSeparator != rune('/') {
+			imp = strings.ReplaceAll(imp, string(os.PathSeparator), `/`)
+		}
 		imp = reRemoveChars.ReplaceAllString(imp, ``)
 		if imp == `` {
 			return ``, fmt.Errorf(`invalid go source path: %s`, path)
-		}
-
-		if os.PathSeparator != rune('/') {
-			imp = strings.ReplaceAll(imp, string(os.PathSeparator), `/`)
 		}
 		return imp, nil
 	}

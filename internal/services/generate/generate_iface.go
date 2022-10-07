@@ -6,11 +6,11 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/dexterp/ifaces/internal/resources/source"
+	"github.com/dexterp/ifaces/internal/resources/srcio"
 )
 
 // GenerateIface interface generator
 type GenerateIface interface {
 	// Generate generate interfaces source code for the gen sub command.
-	Generate(srcs []*source.Source, current *bytes.Buffer, outfile string, output io.Writer) error
+	Generate(srcs []srcio.Source, current *bytes.Buffer, outfile string, output io.Writer) error
 }

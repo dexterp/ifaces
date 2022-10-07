@@ -12,7 +12,7 @@ import (
 	"github.com/dexterp/ifaces/internal/resources/envs"
 	"github.com/dexterp/ifaces/internal/resources/modinfo"
 	"github.com/dexterp/ifaces/internal/resources/print"
-	"github.com/dexterp/ifaces/internal/resources/source"
+	"github.com/dexterp/ifaces/internal/resources/srcio"
 	"github.com/dexterp/ifaces/internal/resources/version"
 	"github.com/dexterp/ifaces/internal/services/generate"
 )
@@ -71,7 +71,7 @@ func getArgs() *cli.Args {
 	return args
 }
 
-func (r run) srcList() (srcs []*source.Source) {
+func (r run) srcList() (srcs []srcio.Source) {
 	added := map[string]any{}
 	path := r.args.Src
 	path = r.pathModulePrefix(path)
@@ -142,7 +142,7 @@ func (r run) pathModulePrefix(path string) string {
 }
 
 // expandPath expands path to a directory
-func (r run) expandPath(srcs *[]*source.Source, added map[string]any, path string) {
+func (r run) expandPath(srcs *[]srcio.Source, added map[string]any, path string) {
 	if path == `` {
 		return
 	}
@@ -159,7 +159,7 @@ func (r run) expandPath(srcs *[]*source.Source, added map[string]any, path strin
 		dir = path
 	} else {
 		if _, ok := added[path]; !ok {
-			*srcs = append(*srcs, &source.Source{
+			*srcs = append(*srcs, srcio.Source{
 				File: path,
 			})
 			added[path] = true
@@ -172,7 +172,7 @@ func (r run) expandPath(srcs *[]*source.Source, added map[string]any, path strin
 		if _, ok := added[m]; ok {
 			continue
 		}
-		*srcs = append(*srcs, &source.Source{
+		*srcs = append(*srcs, srcio.Source{
 			File: m,
 			Src:  nil,
 		})
@@ -181,13 +181,13 @@ func (r run) expandPath(srcs *[]*source.Source, added map[string]any, path strin
 }
 
 // goGeneratePath add go:generate environment variable to sources list
-func (r run) goGeneratePath(srcs *[]*source.Source, added map[string]any, path string) string {
+func (r run) goGeneratePath(srcs *[]srcio.Source, added map[string]any, path string) string {
 	// Skip adding go:generate path if a path is already provided
 	if path != `` {
 		return path
 	}
 	if envs.Gofile() != `` || envs.Goline() > 0 {
-		*srcs = append(*srcs, &source.Source{
+		*srcs = append(*srcs, srcio.Source{
 			File: envs.Gofile(),
 			Line: envs.Goline(),
 		})
