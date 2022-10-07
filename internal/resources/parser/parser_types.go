@@ -14,17 +14,17 @@ type Comment struct {
 
 // Import
 type Import struct {
-	File string
-	name string
-	path string
+	File    string
+	NameVal string
+	PathVal string
 }
 
 func (i Import) Name() string {
-	return i.name
+	return i.NameVal
 }
 
 func (i Import) Path() string {
-	return i.path
+	return i.PathVal
 }
 
 // Prefix

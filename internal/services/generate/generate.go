@@ -14,6 +14,7 @@ import (
 	"github.com/dexterp/ifaces/internal/resources/cond"
 	"github.com/dexterp/ifaces/internal/resources/match"
 	"github.com/dexterp/ifaces/internal/resources/parser"
+	"github.com/dexterp/ifaces/internal/resources/paths"
 	"github.com/dexterp/ifaces/internal/resources/print"
 	"github.com/dexterp/ifaces/internal/resources/srcformat"
 	"github.com/dexterp/ifaces/internal/resources/srcio"
@@ -63,6 +64,17 @@ func (g *Generate) Generate(srcs []srcio.Source, current *bytes.Buffer, outfile 
 	if err != nil {
 		return err
 	}
+
+	// TODO - move this exported import to parser
+	var importValue *parser.Import
+	if srcs != nil {
+		i, err := paths.PathToImport(srcs[0].File)
+		if err == nil {
+			importValue = &parser.Import{
+				PathVal: i,
+			}
+		}
+	}
 	for _, t := range g.targets {
 		templateOut := &bytes.Buffer{}
 		err = applyTemplate(templateOut, t.tdata)
@@ -71,6 +83,9 @@ func (g *Generate) Generate(srcs []srcio.Source, current *bytes.Buffer, outfile 
 		}
 		importsOut := &bytes.Buffer{}
 		importsList := []addimports.ImportIface{}
+		if t.exported && importValue != nil {
+			importsList = append(importsList, importValue)
+		}
 		for i := range t.imports {
 			importsList = append(importsList, i)
 		}

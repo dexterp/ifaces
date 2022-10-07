@@ -175,9 +175,9 @@ func (p *parse) parseImports(imp []*ast.ImportSpec, file string) {
 			path = strings.Trim(i.Path.Value, `"`)
 		}
 		p.imports = append(p.imports, &Import{
-			File: file,
-			name: name,
-			path: path,
+			File:    file,
+			NameVal: name,
+			PathVal: path,
 		})
 	}
 }
