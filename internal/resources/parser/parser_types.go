@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"github.com/dexterp/ifaces/internal/resources/parser/parsefunc"
 	"github.com/dexterp/ifaces/internal/resources/typecheck"
 )
 
@@ -14,17 +13,9 @@ type Comment struct {
 
 // Import
 type Import struct {
-	File    string
-	NameVal string
-	PathVal string
-}
-
-func (i Import) Name() string {
-	return i.NameVal
-}
-
-func (i Import) Path() string {
-	return i.PathVal
+	File string
+	Name string
+	Path string
 }
 
 // Prefix
@@ -44,43 +35,38 @@ type Type struct {
 
 // Method receiver or interface method
 type Method struct {
-	Doc       string
-	File      string // File originating file
-	Line      int
-	Name      string
-	Prefixes  []string
-	Pkg       string
-	signature string
-	TypeName  string
-	hasType   typecheck.HasType
+	Doc      string
+	File     string // File originating file
+	fn       *Func
+	Line     int
+	Name     string
+	Prefixes []string
+	Pkg      string
+	TypeName string
+	HasType  typecheck.HasType
 }
 
 // Signature return the function signature
 func (i Method) Signature() string {
-	f := parsefunc.ToFuncDecl(i.signature, i.Pkg, i.hasType)
-	return f.String()
+	s := i.fn.Package(i.Pkg).String()
+	return s
 }
 
 // NeedsImport
 func (i Method) NeedsImport() bool {
-	f := parsefunc.ToFuncDecl(i.signature, i.Pkg, i.hasType)
-	return f.NeedsImport
+	//f := parsefunc.ToFuncDecl(i.Sig, i.Pkg, i.HasType)
+	//return f.NeedsImport
+	// TODO - Implement or refactor this method
+	return false
 }
 
 // ImportPrefixes
 func (i Method) ImportPrefixes() (prefixes []Prefix) {
-	f := parsefunc.ToFuncDecl(i.signature, i.Pkg, i.hasType)
-	for p := range f.Prefixes {
+	for p := range i.fn.Prefixes {
 		prefixes = append(prefixes, Prefix{
 			Text: p,
 			File: i.File,
 		})
 	}
 	return
-}
-
-// UsesTypeParams returns true if function declaration contains type parmeters
-func (i Method) UsesTypeParams() bool {
-	f := parsefunc.ToFuncDecl(i.signature, i.Pkg, i.hasType)
-	return f.UsesTypeParams()
 }

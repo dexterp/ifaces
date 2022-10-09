@@ -10,33 +10,19 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-func NewImport(name, path string) *Import {
-	return &Import{
+func NewImport(name, path string) Import {
+	return Import{
 		name: name,
 		path: path,
 	}
 }
 
 type Import struct {
-	ImportIface
 	name string
 	path string
 }
 
-type ImportIface interface {
-	Name() string
-	Path() string
-}
-
-func (i Import) Name() string {
-	return i.name
-}
-
-func (i Import) Path() string {
-	return i.path
-}
-
-func AddImports(file string, src any, imports []ImportIface, output io.Writer) error {
+func AddImports(file string, src any, imports []Import, output io.Writer) error {
 	// TODO - Fix problem with imports containing the same package identifier choosing the wrong package.
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, file, src, parser.ParseComments|parser.DeclarationErrors)
@@ -53,13 +39,13 @@ func AddImports(file string, src any, imports []ImportIface, output io.Writer) e
 		chk.add(name, path)
 	}
 	for _, i := range imports {
-		if chk.contains(i.Name(), i.Path()) {
+		if chk.contains(i.name, i.path) {
 			continue
 		}
-		if i.Name() != `` {
-			astutil.AddNamedImport(fset, f, i.Name(), i.Path())
+		if i.name != `` {
+			astutil.AddNamedImport(fset, f, i.name, i.path)
 		} else {
-			astutil.AddImport(fset, f, i.Path())
+			astutil.AddImport(fset, f, i.path)
 		}
 	}
 	return format.Node(output, fset, f)

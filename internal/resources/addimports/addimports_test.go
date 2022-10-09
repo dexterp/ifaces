@@ -46,7 +46,7 @@ func (i MyIO) GetStderr() *os.Stderr {
 	return nil
 }
 `
-	imports := []ImportIface{
+	imports := []Import{
 		NewImport(``, `io`),
 		NewImport(``, `os`),
 		NewImport(`driver`, `src.com/author/sql-driver`),

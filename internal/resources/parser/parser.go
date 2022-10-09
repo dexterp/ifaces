@@ -1,17 +1,14 @@
 package parser
 
 import (
-	"bytes"
 	"go/ast"
 	"go/parser"
-	"go/printer"
 	"go/token"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/dexterp/ifaces/internal/resources/cond"
-	"github.com/dexterp/ifaces/internal/resources/parser/parsefunc"
 	"github.com/dexterp/ifaces/internal/resources/srcio"
 	"github.com/dexterp/ifaces/internal/resources/typecheck"
 	"github.com/dexterp/ifaces/internal/resources/types"
@@ -175,23 +172,23 @@ func (p *parse) parseImports(imp []*ast.ImportSpec, file string) {
 			path = strings.Trim(i.Path.Value, `"`)
 		}
 		p.imports = append(p.imports, &Import{
-			File:    file,
-			NameVal: name,
-			PathVal: path,
+			File: file,
+			Name: name,
+			Path: path,
 		})
 	}
 }
 
 func (p *parse) parseInterfaceMethod(fset *token.FileSet, ts *ast.TypeSpec, astField *ast.Field, file string) {
-	s := signature(fset, astField.Names[0].String(), astField.Type)
+	fn := IfaceToFunc(astField, p.hasTypeCheck())
 	p.ifaceMethods = append(p.ifaceMethods, &Method{
-		Doc:       astField.Doc.Text(),
-		File:      filepath.Base(file),
-		Line:      fset.Position(astField.Pos()).Line,
-		Name:      astField.Names[0].String(),
-		signature: s,
-		TypeName:  ts.Name.String(),
-		hasType:   p.hasTypeCheck(),
+		Doc:      astField.Doc.Text(),
+		File:     filepath.Base(file),
+		Line:     fset.Position(astField.Pos()).Line,
+		Name:     astField.Names[0].String(),
+		fn:       fn,
+		TypeName: ts.Name.String(),
+		HasType:  p.hasTypeCheck(),
 	})
 }
 
@@ -199,23 +196,22 @@ func (p *parse) parseReceiverMethods(fset *token.FileSet, astFuncDecl *ast.FuncD
 	if astFuncDecl.Recv == nil {
 		return
 	}
-	s := signature(fset, astFuncDecl.Name.String(), astFuncDecl.Type)
+	fn := RecvToFunc(astFuncDecl, p.hasTypeCheck())
 	p.recvMethods = append(p.recvMethods, &Method{
-		Doc:       strings.TrimSuffix(astFuncDecl.Doc.Text(), "\n"),
-		File:      filepath.Base(file),
-		Line:      fset.Position(astFuncDecl.Pos()).Line,
-		Name:      astFuncDecl.Name.String(),
-		Prefixes:  p.parseSigPrefixes(s),
-		signature: s,
-		TypeName:  parseReceiverMethodsTypeName(*astFuncDecl),
-		hasType:   p.hasTypeCheck(),
+		Doc:      strings.TrimSuffix(astFuncDecl.Doc.Text(), "\n"),
+		File:     filepath.Base(file),
+		Line:     fset.Position(astFuncDecl.Pos()).Line,
+		Name:     astFuncDecl.Name.String(),
+		Prefixes: parseSigPrefixes(fn),
+		fn:       fn,
+		TypeName: parseReceiverMethodsTypeName(*astFuncDecl),
+		HasType:  p.hasTypeCheck(),
 	})
 }
 
-func (p parse) parseSigPrefixes(s string) (prefixes []string) {
-	f := parsefunc.ToFuncDecl(s, ``, p.hasTypeCheck())
-	for pre := range f.Prefixes {
-		prefixes = append(prefixes, pre)
+func parseSigPrefixes(fn *Func) (prefixes []string) {
+	for p := range fn.Prefixes {
+		prefixes = append(prefixes, p)
 	}
 	return
 }
@@ -253,12 +249,4 @@ func parseTypeType(astTypeSpec *ast.TypeSpec) int {
 		return types.STRUCT
 	}
 	return types.UNKNOWN
-}
-
-func signature(fset *token.FileSet, funcName string, n ast.Node) string {
-	buf := new(bytes.Buffer)
-	printer.Fprint(buf, fset, n)
-	sig := strings.Replace(buf.String(), `func`, funcName, 1)
-	sig = strings.TrimSuffix(sig, "\n")
-	return sig
 }

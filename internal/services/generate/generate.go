@@ -71,7 +71,7 @@ func (g *Generate) Generate(srcs []srcio.Source, current *bytes.Buffer, outfile 
 		i, err := paths.PathToImport(srcs[0].File)
 		if err == nil {
 			importValue = &parser.Import{
-				PathVal: i,
+				Path: i,
 			}
 		}
 	}
@@ -82,12 +82,12 @@ func (g *Generate) Generate(srcs []srcio.Source, current *bytes.Buffer, outfile 
 			return err
 		}
 		importsOut := &bytes.Buffer{}
-		importsList := []addimports.ImportIface{}
+		importsList := []addimports.Import{}
 		if t.exported && importValue != nil {
-			importsList = append(importsList, importValue)
+			importsList = append(importsList, addimports.NewImport(importValue.Name, importValue.Path))
 		}
 		for i := range t.imports {
-			importsList = append(importsList, i)
+			importsList = append(importsList, addimports.NewImport(i.Name, i.Path))
 		}
 		err = addimports.AddImports(outfile, templateOut, importsList, importsOut)
 		if err != nil {
@@ -358,9 +358,6 @@ func (g *Generate) addIfaceMethods(iface *tdata.Interface, methods []*parser.Met
 
 func addPackage(recvs *[]*parser.Method, parsedPkg, targetPkg string) {
 	for _, recv := range *recvs {
-		if recv.UsesTypeParams() {
-			continue
-		}
 		if targetPkg != parsedPkg {
 			recv.Pkg = parsedPkg
 		}
@@ -369,9 +366,6 @@ func addPackage(recvs *[]*parser.Method, parsedPkg, targetPkg string) {
 
 func addRecvMethods(iface *tdata.Interface, recvs *[]*parser.Method, parsedPkg, targetPkg string, noFuncDoc bool) error {
 	for _, recv := range *recvs {
-		if recv.UsesTypeParams() {
-			continue
-		}
 		if targetPkg != parsedPkg {
 			recv.Pkg = parsedPkg
 		}
@@ -410,13 +404,13 @@ func (g *Generate) addPrefixImports(parsed []*parser.Import, recvs []*parser.Met
 				continue
 			}
 			for _, pi := range parsed {
-				if cond.EqualAnyString(pi.Name(), `_`, `.`) {
+				if cond.EqualAnyString(pi.Name, `_`, `.`) {
 					continue
-				} else if pi.Name() != `` && cond.EqualAnyString(pi.Name(), r.Prefixes...) {
+				} else if pi.Name != `` && cond.EqualAnyString(pi.Name, r.Prefixes...) {
 					t.imports[pi] = struct{}{}
 					continue
 				}
-				m := reMatchPackagePath.FindAllString(pi.Path(), 1)
+				m := reMatchPackagePath.FindAllString(pi.Path, 1)
 				if m != nil && cond.EqualAnyString(m[0], r.Prefixes...) {
 					t.imports[pi] = struct{}{}
 					continue
