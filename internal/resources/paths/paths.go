@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/dexterp/ifaces/internal/resources/envs"
 	"github.com/dexterp/ifaces/internal/resources/modinfo"
+	"github.com/dexterp/ifaces/internal/resources/stringx"
 )
-
-var reRemoveChars = regexp.MustCompile(`@[^/]+`)
 
 // PathToImport determine import from path name. Requires paths that are
 // descendants of GOROOT or GOPATH, or that an ancestor director contains a
@@ -54,7 +52,7 @@ func PathToImport(path string) (imp string, err error) {
 		if os.PathSeparator != rune('/') {
 			imp = strings.ReplaceAll(imp, string(os.PathSeparator), `/`)
 		}
-		imp = reRemoveChars.ReplaceAllString(imp, ``)
+		imp = stringx.StripVersion(imp)
 		if imp == `` {
 			return ``, fmt.Errorf(`invalid go source path: %s`, path)
 		}

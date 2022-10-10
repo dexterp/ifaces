@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"regexp"
 	"text/template"
 
 	"github.com/dexterp/ifaces/internal/resources/addimports"
@@ -18,6 +17,7 @@ import (
 	"github.com/dexterp/ifaces/internal/resources/print"
 	"github.com/dexterp/ifaces/internal/resources/srcformat"
 	"github.com/dexterp/ifaces/internal/resources/srcio"
+	"github.com/dexterp/ifaces/internal/resources/stringx"
 	"github.com/dexterp/ifaces/internal/resources/tdata"
 	"github.com/dexterp/ifaces/internal/resources/types"
 )
@@ -48,10 +48,6 @@ type Generate struct {
 var gentmpl string
 
 var ErrorNoSourceFile = errors.New(`no source files processed`)
-
-var reMatchValidPackage = regexp.MustCompile(`^[a-z][a-z0-9]+$`)
-
-var reMatchPackagePath = regexp.MustCompile(`(?:^|/)([a-z0-9]+)[^/]*$`)
 
 // Generate generate interfaces source code for the gen sub command.
 func (g *Generate) Generate(srcs []srcio.Source, current *bytes.Buffer, outfile string, output io.Writer) error {
@@ -333,11 +329,11 @@ func (g Generate) setOutputPackage(pkgCli, path string) (string, error) {
 	}
 	d := filepath.Dir(abs)
 	pkgCli = filepath.Base(d)
-	m := reMatchValidPackage.FindAllString(pkgCli, 1)
-	if m == nil {
+	m := stringx.ExPkg(pkgCli)
+	if m == `` {
 		g.Print.HasFatalf(`invalid package name "%s" determined from path %s`, path, pkgCli)
 	}
-	pkgCli = m[0]
+	pkgCli = m
 	return pkgCli, nil
 }
 
@@ -410,8 +406,8 @@ func (g *Generate) addPrefixImports(parsed []*parser.Import, recvs []*parser.Met
 					t.imports[pi] = struct{}{}
 					continue
 				}
-				m := reMatchPackagePath.FindAllString(pi.Path, 1)
-				if m != nil && cond.EqualAnyString(m[0], r.Prefixes...) {
+				m := stringx.ExPkgPath(pi.Path)
+				if m != `` && cond.EqualAnyString(m, r.Prefixes...) {
 					t.imports[pi] = struct{}{}
 					continue
 				}

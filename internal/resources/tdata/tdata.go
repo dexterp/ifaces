@@ -14,7 +14,7 @@ import (
 var (
 	ErrorDuplicateInterface = errors.New(`can not add duplicate interface`)
 	ErrorDuplicateMethod    = errors.New(`can not add duplicate method`)
-	reFirstWord             = regexp.MustCompile(`^\w+`)
+	reFirstWord             = regexp.MustCompile(`^[^\s]+`)
 )
 
 type TData struct {
