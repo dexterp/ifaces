@@ -35,14 +35,14 @@ func (q *Query) GetRecvByLine(file string, line int) (recv *Method) {
 	return
 }
 
-// GetRecvsByName returns all receivers by a pattern
-func (q *Query) GetRecvsByName(name string) (recvs []*Method) {
+// GetRecvByTypeMethod returns a receiver that match a type nad name
+func (q *Query) GetRecvByTypeMethod(typ, method string) *Method {
 	for _, recv := range q.Parser.ReceiverMethods {
-		if recv.Name == name && match.Capitalized(recv.Name) {
-			recvs = append(recvs, recv)
+		if recv.TypeName == typ && recv.Name == method {
+			return recv
 		}
 	}
-	return
+	return nil
 }
 
 // GetRecvsByType returns all the function interfaces for

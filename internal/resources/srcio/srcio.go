@@ -13,6 +13,7 @@ type Source struct {
 
 type Destination struct {
 	File    string
+	Package string
 	Current *bytes.Buffer
 	Output  io.Writer
 }

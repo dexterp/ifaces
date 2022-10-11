@@ -11,7 +11,6 @@ import (
 
 	"github.com/dexterp/ifaces/internal/resources/addimports"
 	"github.com/dexterp/ifaces/internal/resources/cond"
-	"github.com/dexterp/ifaces/internal/resources/match"
 	"github.com/dexterp/ifaces/internal/resources/parser"
 	"github.com/dexterp/ifaces/internal/resources/paths"
 	"github.com/dexterp/ifaces/internal/resources/print"
@@ -191,7 +190,7 @@ func (g *Generate) populateTypeInterfaces(t *target, src *srcio.Source, p *parse
 			return err
 		}
 		g.addPrefixImports(p.Imports, *recvs)
-		if isExported(*recvs) {
+		if isExported(*recvs...) {
 			t.exported = true
 		}
 		if iface.Methods == nil {
@@ -238,7 +237,7 @@ func (g *Generate) populateRecvInterfaces(t *target, src *srcio.Source, p *parse
 		}
 	}
 	g.addPrefixImports(p.Imports, recvs)
-	if isExported(recvs) {
+	if isExported(recvs...) {
 		t.exported = true
 	}
 	return nil
@@ -271,21 +270,15 @@ func (g *Generate) getOrMakeTarget(file string, imports []*parser.Import) *targe
 func (g Generate) getRecvList(src *srcio.Source, p *parser.Parser) (r []*parser.Method) {
 	q := parser.NewQuery(p)
 	if g.MatchFunc != `` {
-		recvs := q.GetRecvsByName(g.MatchFunc)
-		if g.MatchType != `` {
-			for _, recv := range recvs {
-				if match.Match(recv.TypeName, g.MatchType) && match.Capitalized(recv.TypeName) {
-					r = append(r, recv)
-				}
-			}
-		} else {
-			r = recvs
+		recv := q.GetRecvByTypeMethod(g.MatchType, g.MatchFunc)
+		if recv != nil {
+			r = append(r, recv)
 		}
 	}
-	if src != nil {
+	if len(r) == 0 && src != nil {
 		file := src.File
 		line := src.Line
-		if len(r) == 0 && line > 0 {
+		if line > 0 {
 			recv := q.GetRecvByLine(file, line)
 			if recv != nil {
 				r = append(r, recv)
@@ -439,7 +432,7 @@ func makeInterface(data *tdata.TData, name, doc string, noTDoc bool) (iface *tda
 	return
 }
 
-func isExported(recvs []*parser.Method) bool {
+func isExported(recvs ...*parser.Method) bool {
 	for _, r := range recvs {
 		if r.NeedsImport() {
 			return true

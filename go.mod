@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815
+	github.com/jinzhu/copier v0.3.5
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
